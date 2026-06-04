@@ -35,6 +35,11 @@ def test_dispatch_explain_notification():
     assert out["equipment_id"] == "bellmarine-ddw-10"
 
 
+def test_dispatch_find_equipment():
+    out = dispatch(_vault(), _BINDINGS, "find_equipment", {"query": "ddw10"})
+    assert out["matches"][0]["equipment_id"] == "bellmarine-ddw-10"
+
+
 def test_dispatch_unknown_tool():
     import pytest
     with pytest.raises(ValueError):
