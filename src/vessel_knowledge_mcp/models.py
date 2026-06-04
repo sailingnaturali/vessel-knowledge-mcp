@@ -43,6 +43,8 @@ class Equipment:
     def from_markdown(cls, text: str) -> "Equipment":
         if not text.startswith(_FENCE):
             raise ValueError("markdown must start with a '---' frontmatter fence")
+        if text.count(_FENCE) < 2:
+            raise ValueError("markdown must have opening and closing '---' frontmatter fences")
         _, fm, body = text.split(_FENCE, 2)
         data = yaml.safe_load(fm) or {}
         measurements = {}
@@ -54,7 +56,10 @@ class Equipment:
             )
         known = {f.name for f in fields(cls)} - {"prose", "measurements"}
         kwargs = {k: v for k, v in data.items() if k in known}
-        return cls(prose=body.lstrip("\n"), measurements=measurements, **kwargs)
+        try:
+            return cls(prose=body.lstrip("\n"), measurements=measurements, **kwargs)
+        except TypeError as exc:
+            raise ValueError(f"equipment card missing required field: {exc}") from exc
 
     def to_markdown(self) -> str:
         data = {k: v for k, v in asdict(self).items() if k not in ("prose",)}

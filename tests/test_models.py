@@ -1,3 +1,5 @@
+import pytest
+
 from vessel_knowledge_mcp.models import Equipment, Measurement, Zone
 
 CARD = """\
@@ -48,3 +50,16 @@ def test_round_trips_through_markdown():
     assert again.equipment_id == eq.equipment_id
     assert again.measurements["temperature"].zones[1].message == "Motor temp high"
     assert again.part_numbers == eq.part_numbers
+    assert again.prose == eq.prose
+
+
+def test_from_markdown_rejects_single_fence():
+    bad = "---\nequipment_id: x\nmodel: y\ncategory: z\nManual prose with no closing fence.\n"
+    with pytest.raises(ValueError):
+        Equipment.from_markdown(bad)
+
+
+def test_from_markdown_rejects_missing_required_fields():
+    bad = "---\nequipment_id: x\nmanufacturer: Acme\n---\nProse.\n"
+    with pytest.raises(ValueError):
+        Equipment.from_markdown(bad)
