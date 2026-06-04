@@ -58,13 +58,24 @@ def explain_notification(vault: Vault, bindings: dict, path: str,
                 "error": f"bound equipment '{binding['equipment_id']}' not in vault"}
     measurement = binding["measurement"]
     m = eq.measurements.get(measurement)
-    verdict = check_reading(vault, eq.equipment_id, measurement, value) if value is not None else {}
+    if value is not None:
+        verdict = check_reading(vault, eq.equipment_id, measurement, value)
+        state_out = verdict.get("state", state)
+        message = verdict.get("message")
+    else:
+        state_out = state
+        message = None
+        if m is not None and state is not None:
+            for z in m.zones:
+                if z.state == state:
+                    message = z.message
+                    break
     return {
         "found": True, "path": path, "equipment_id": eq.equipment_id,
         "manufacturer": eq.manufacturer, "model": eq.model, "measurement": measurement,
         "reported_state": state,
-        "state": verdict.get("state", state),
-        "message": verdict.get("message"),
+        "state": state_out,
+        "message": message,
         "units": m.units if m else None,
         "display_units": m.display_units if m else None,
         "rated_zones": [_zone_summary(z) for z in (m.zones if m else [])],

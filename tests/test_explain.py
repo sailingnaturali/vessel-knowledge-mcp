@@ -30,6 +30,13 @@ def test_explain_resolves_path_via_bindings():
     assert "impeller" in out["prose"]
 
 
+def test_explain_message_fallback_without_value():
+    out = tools.explain_notification(_vault(), _BINDINGS, "propulsion.0.temperature",
+                                     state="alarm")
+    assert out["state"] == "alarm"
+    assert out["message"] == "over-temp"
+
+
 def test_explain_unbound_path():
     out = tools.explain_notification(_vault(), {}, "tanks.fuel.0.currentLevel", state="warn")
     assert out["found"] is False

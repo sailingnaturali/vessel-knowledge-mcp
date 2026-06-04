@@ -57,8 +57,7 @@ not bar, not knots.** `display_units` is metadata only, for human readability.
 ## Build-time CLI
 
     # Ingest a manual PDF into the vault (requires ANTHROPIC_API_KEY)
-    VESSEL_KNOWLEDGE_VAULT_PATH=/path/to/vault \
-      uv run vessel-knowledge ingest manual.pdf --equipment-id bellmarine-ddw-10
+    uv run vessel-knowledge ingest manual.pdf --vault /path/to/vault
 
     # Regenerate INDEX.md listing all cards
     uv run vessel-knowledge index --vault /path/to/vault

@@ -80,7 +80,7 @@ def main(argv: list[str] | None = None) -> int:
     p_zones = sub.add_parser("zones", help="emit a SignalK meta-zones delta from bindings")
     p_zones.add_argument("--vault", required=True)
     p_zones.add_argument("--bindings", required=True,
-                         help="JSON list of {model, path_prefix}")
+                         help="JSON list of {equipment_id, path_prefix}")
     p_zones.add_argument("--out-bindings", help="write the path->equipment bindings map here")
     p_zones.add_argument("--strict", action="store_true",
                          help="exit non-zero on any zone warning")

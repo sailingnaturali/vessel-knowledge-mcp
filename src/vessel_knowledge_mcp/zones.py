@@ -45,20 +45,20 @@ def _zone_dict(z: Zone) -> dict:
 
 
 def generate_zones(vault, bindings: list[dict]) -> tuple[dict, dict, list[str]]:
-    """Join equipment cards against {model, path_prefix} bindings.
+    """Join equipment cards against {equipment_id, path_prefix} bindings.
 
     Returns (signalk_delta, bindings_map, warnings).
     - signalk_delta: a single delta with a `meta` array, ready to merge into baseDeltas.json
     - bindings_map: full SignalK path -> {equipment_id, measurement}
-    - warnings: unknown models + per-measurement zone overlaps/gaps
+    - warnings: unknown equipment_ids + per-measurement zone overlaps/gaps
     """
     meta: list[dict] = []
     bindings_map: dict[str, dict] = {}
     warnings: list[str] = []
     for b in bindings:
-        eq = vault.get(b["model"])
+        eq = vault.get(b["equipment_id"])
         if eq is None:
-            warnings.append(f"unknown model: {b['model']}")
+            warnings.append(f"unknown equipment_id: {b['equipment_id']}")
             continue
         prefix = b["path_prefix"].rstrip(".")
         for key, m in eq.measurements.items():

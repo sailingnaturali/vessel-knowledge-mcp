@@ -29,7 +29,7 @@ def _seed_vault(tmp_path: Path) -> Path:
 def test_zones_subcommand_writes_delta_and_bindings(tmp_path, capsys):
     vault = _seed_vault(tmp_path)
     bindings_in = tmp_path / "in.json"
-    bindings_in.write_text(json.dumps([{"model": "bellmarine-ddw-10", "path_prefix": "propulsion.0"}]))
+    bindings_in.write_text(json.dumps([{"equipment_id": "bellmarine-ddw-10", "path_prefix": "propulsion.0"}]))
     out_bindings = tmp_path / "out_bindings.json"
     rc = cli.main(["zones", "--vault", str(vault), "--bindings", str(bindings_in),
                    "--out-bindings", str(out_bindings)])
