@@ -18,15 +18,29 @@ def get_equipment(vault: Vault, equipment_id: str) -> dict:
     return {"found": True, "equipment": _card_dict(eq)}
 
 
+def _summary(e) -> dict:
+    return {"equipment_id": e.equipment_id, "manufacturer": e.manufacturer,
+            "model": e.model, "category": e.category}
+
+
 def find_equipment(vault: Vault, query: str) -> dict:
-    q = query.strip().casefold()
+    """Resolve a free-text query to equipment. Matches if any query word (>=2 chars)
+    is a substring of any of the card's id/manufacturer/model/category/aliases — so
+    multi-word, category-style queries like "propulsion motor" resolve.
+    """
+    tokens = [t for t in query.strip().casefold().split() if len(t) >= 2]
     matches = []
     for e in vault.equipment:
-        haystack = [e.equipment_id, e.manufacturer, e.model, *e.aliases]
-        if any(q in h.casefold() for h in haystack if h):
-            matches.append({"equipment_id": e.equipment_id,
-                            "manufacturer": e.manufacturer, "model": e.model})
+        hay = [f.casefold() for f in (e.equipment_id, e.manufacturer, e.model,
+                                      e.category, *e.aliases) if f]
+        if tokens and any(tok in h for tok in tokens for h in hay):
+            matches.append(_summary(e))
     return {"matches": matches}
+
+
+def list_equipment(vault: Vault) -> dict:
+    """Every equipment card in the vault (id, manufacturer, model, category)."""
+    return {"equipment": [_summary(e) for e in vault.equipment]}
 
 
 def check_reading(vault: Vault, equipment_id: str, measurement: str, value: float) -> dict:

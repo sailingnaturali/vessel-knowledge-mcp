@@ -40,6 +40,12 @@ def test_dispatch_find_equipment():
     assert out["matches"][0]["equipment_id"] == "bellmarine-ddw-10"
 
 
+def test_dispatch_list_equipment():
+    out = dispatch(_vault(), _BINDINGS, "list_equipment", {})
+    assert out["equipment"][0]["equipment_id"] == "bellmarine-ddw-10"
+    assert out["equipment"][0]["category"] == "propulsion"
+
+
 def test_dispatch_unknown_tool():
     import pytest
     with pytest.raises(ValueError):

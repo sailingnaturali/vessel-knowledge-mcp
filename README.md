@@ -6,7 +6,7 @@ agents via four tools.
 
 **Two halves:**
 - **Runtime MCP** — loads a markdown vault of equipment cards, exposes `explain_notification`,
-  `get_equipment`, `find_equipment`, `check_reading`.
+  `get_equipment`, `find_equipment`, `list_equipment`, `check_reading`.
 - **Build-time CLI** (`vessel-knowledge`) — ingests source PDFs via the Claude API, builds
   a full-text INDEX.md, and pushes zone metadata into SignalK.
 
@@ -51,7 +51,8 @@ not bar, not knots.** `display_units` is metadata only, for human readability.
 |---|---|
 | `explain_notification` | Explain a SignalK notification: what equipment is on the path, rated zones, current state, and what to check |
 | `get_equipment` | Full equipment card — specs, part numbers, service intervals, rated zones |
-| `find_equipment` | Resolve a manufacturer/model/alias query to an `equipment_id` |
+| `find_equipment` | Resolve a free-text query to equipment — matches any query word against id/manufacturer/model/category/aliases (so `propulsion motor` resolves, not just exact makes) |
+| `list_equipment` | List every equipment card in the vault (id, manufacturer, model, category) |
 | `check_reading` | Deterministic in/out-of-range verdict for a value against an equipment's rated zones |
 
 ## Build-time CLI

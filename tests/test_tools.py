@@ -33,3 +33,24 @@ def test_find_equipment_matches_alias_case_insensitive():
 
 def test_find_equipment_no_match():
     assert tools.find_equipment(_vault(), "outboard")["matches"] == []
+
+
+def test_find_equipment_matches_category_via_token():
+    # "propulsion motor" must resolve to the propulsion-category card even though
+    # neither word is a substring of the id/model/aliases — category + tokenizing.
+    out = tools.find_equipment(_vault(), "the propulsion motor")
+    assert [m["equipment_id"] for m in out["matches"]] == ["bellmarine-ddw-10"]
+    assert out["matches"][0]["category"] == "propulsion"
+
+
+def test_find_equipment_ignores_one_char_tokens():
+    # a stray single-char token must not match-all
+    assert tools.find_equipment(_vault(), "x")["matches"] == []
+
+
+def test_list_equipment_returns_all_cards():
+    out = tools.list_equipment(_vault())
+    assert out["equipment"] == [{
+        "equipment_id": "bellmarine-ddw-10", "manufacturer": "Bellmarine",
+        "model": "DDW-10", "category": "propulsion",
+    }]

@@ -25,6 +25,8 @@ def dispatch(vault: Vault, bindings: dict, name: str, args: dict) -> dict:
         return tools.get_equipment(vault, equipment_id=args["equipment_id"])
     if name == "find_equipment":
         return tools.find_equipment(vault, query=args["query"])
+    if name == "list_equipment":
+        return tools.list_equipment(vault)
     if name == "check_reading":
         return tools.check_reading(vault, equipment_id=args["equipment_id"],
                                    measurement=args["measurement"], value=args["value"])
@@ -59,9 +61,16 @@ def build_server(vault: Vault, bindings: dict) -> Server:
             ),
             types.Tool(
                 name="find_equipment",
-                description="Resolve a manufacturer/model/alias query to an equipment_id.",
+                description=("Resolve a free-text query to equipment. Matches any query word "
+                             "against id/manufacturer/model/category/aliases, so "
+                             "'propulsion motor' or 'watermaker' resolve, not just exact makes."),
                 inputSchema={"type": "object", "properties": {"query": {"type": "string"}},
                              "required": ["query"]},
+            ),
+            types.Tool(
+                name="list_equipment",
+                description="List every equipment card in the vault (id, manufacturer, model, category).",
+                inputSchema={"type": "object", "properties": {}},
             ),
             types.Tool(
                 name="check_reading",
