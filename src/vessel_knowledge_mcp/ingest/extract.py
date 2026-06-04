@@ -82,19 +82,20 @@ def extract_equipment(chunk: str, source: str, *, client,
     resp = client.messages.create(
         model=model, max_tokens=2000, system=build_system_prompt(),
         tools=[EQUIPMENT_TOOL], tool_choice={"type": "tool", "name": "record_equipment"},
-        messages=[{"role": "user", "content": chunk}],
+        messages=[{"role": "user", "content": f"Source: {source}\n\n{chunk}"}],
     )
     data = None
     for block in resp.content:
         if getattr(block, "type", None) == "tool_use" and getattr(block, "name", None) == "record_equipment":
-            data = dict(block.input)
+            data = dict(block.input) if block.input is not None else None
             break
     if not data or data.get("is_equipment") is False or "equipment_id" not in data:
         return None
     data.pop("is_equipment", None)
     measurements = {}
     for key, m in (data.pop("measurements", None) or {}).items():
-        zones = [Zone(**z) for z in (m.get("zones") or [])]
+        zones = [Zone(**{k: v for k, v in z.items() if k in {"state", "lower", "upper", "message"}})
+                 for z in (m.get("zones") or [])]
         measurements[key] = Measurement(
             signalk_key=m["signalk_key"], units=m["units"], zones=zones,
             display_units=m.get("display_units"), source_page=m.get("source_page"))

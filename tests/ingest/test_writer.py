@@ -23,3 +23,8 @@ def test_covered_pages_reports_existing(tmp_path):
 
 def test_covered_pages_empty_for_new_source(tmp_path):
     assert writer.covered_pages(tmp_path, "New.pdf") == set()
+
+
+def test_covered_pages_handles_filename_with_spaces(tmp_path):
+    writer.write_card(tmp_path, _eq(), source_pdf="Bellmarine manual v2.pdf", page=5)
+    assert writer.covered_pages(tmp_path, "Bellmarine manual v2.pdf") == {5}

@@ -6,7 +6,7 @@ from pathlib import Path
 
 from vessel_knowledge_mcp.models import Equipment
 
-_PAGE_RE = re.compile(r"source_pdf:\s*['\"]?([^'\"#\s]+)#page=(\d+)")
+_PAGE_RE = re.compile(r"source_pdf:\s*['\"]?([^'\"#]+)#page=(\d+)")
 
 
 def write_card(vault_root: Path, eq: Equipment, *, source_pdf: str, page: int) -> Path:
@@ -26,6 +26,6 @@ def covered_pages(vault_root: Path, source_pdf: str) -> set[int]:
         return covered
     for md in eq_dir.rglob("*.md"):
         for pdf, page in _PAGE_RE.findall(md.read_text(encoding="utf-8")):
-            if pdf == source_pdf:
+            if pdf.strip() == source_pdf:
                 covered.add(int(page))
     return covered
