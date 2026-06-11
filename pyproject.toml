@@ -1,6 +1,6 @@
 [project]
 name = "vessel-knowledge-mcp"
-version = "0.2.0"
+version = "0.3.0"
 description = "MCP server turning equipment manuals into SignalK alarm zones and equipment lookups"
 readme = "README.md"
 license = "MIT"
