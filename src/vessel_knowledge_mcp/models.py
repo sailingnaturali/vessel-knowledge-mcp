@@ -41,11 +41,17 @@ class Equipment:
 
     @classmethod
     def from_markdown(cls, text: str) -> "Equipment":
-        if not text.startswith(_FENCE):
+        # Fences are line-anchored: a bare '---' inside a YAML value or the
+        # prose must not shift the split (fleet conventions R5).
+        lines = text.splitlines(keepends=True)
+        if not lines or lines[0].strip() != _FENCE:
             raise ValueError("markdown must start with a '---' frontmatter fence")
-        if text.count(_FENCE) < 2:
+        close = next((i for i, ln in enumerate(lines[1:], start=1)
+                      if ln.strip() == _FENCE), None)
+        if close is None:
             raise ValueError("markdown must have opening and closing '---' frontmatter fences")
-        _, fm, body = text.split(_FENCE, 2)
+        fm = "".join(lines[1:close])
+        body = "".join(lines[close + 1:])
         data = yaml.safe_load(fm) or {}
         measurements = {}
         for key, m in (data.get("measurements") or {}).items():

@@ -63,3 +63,40 @@ def test_from_markdown_rejects_missing_required_fields():
     bad = "---\nequipment_id: x\nmanufacturer: Acme\n---\nProse.\n"
     with pytest.raises(ValueError):
         Equipment.from_markdown(bad)
+
+
+def test_from_markdown_dashes_inside_yaml_value_do_not_shift_split():
+    # A '---' substring inside the frontmatter must not be mistaken for the
+    # closing fence (line-anchored fences, fleet conventions R5).
+    md = (
+        "---\n"
+        "equipment_id: x\n"
+        "manufacturer: Acme\n"
+        "model: A---B\n"
+        "category: pump\n"
+        "---\n"
+        "Prose.\n"
+    )
+    eq = Equipment.from_markdown(md)
+    assert eq.model == "A---B"
+    assert eq.prose == "Prose.\n"
+
+
+def test_from_markdown_horizontal_rule_in_prose_preserved():
+    md = (
+        "---\n"
+        "equipment_id: x\n"
+        "manufacturer: Acme\n"
+        "model: M\n"
+        "category: pump\n"
+        "---\n"
+        "Before.\n---\nAfter the horizontal rule.\n"
+    )
+    eq = Equipment.from_markdown(md)
+    assert "After the horizontal rule." in eq.prose
+
+
+def test_from_markdown_dashes_in_prose_without_closing_fence_still_rejected():
+    bad = "---\nequipment_id: x\nmodel: y\ncategory: z\nProse with --- inline but no closing fence line."
+    with pytest.raises(ValueError):
+        Equipment.from_markdown(bad)

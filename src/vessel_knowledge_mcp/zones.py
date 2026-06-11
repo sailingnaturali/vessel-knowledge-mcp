@@ -1,20 +1,57 @@
 """Pure zone math: matching, validation, and SignalK delta generation."""
 from __future__ import annotations
 
+import math
+
 from vessel_knowledge_mcp.models import Measurement, Zone
 
 _NEG_INF = float("-inf")
 _POS_INF = float("inf")
 
+# SignalK alarm-state severity, for resolving overlapping bands.
+_SEVERITY = {"nominal": 0, "normal": 1, "alert": 2, "warn": 3, "alarm": 4, "emergency": 5}
+
+
+def _bounds(z: Zone) -> tuple[float, float]:
+    return (_NEG_INF if z.lower is None else z.lower,
+            _POS_INF if z.upper is None else z.upper)
+
 
 def zone_for(zones: list[Zone], value: float) -> Zone | None:
-    """Return the zone containing value (lower-inclusive, upper-exclusive), or None."""
+    """Return the zone containing value (lower-inclusive, upper-exclusive), or None.
+
+    Prefer classify_reading for verdicts — None here conflates below-range,
+    gaps, and no-zones, which must not read as benign (fleet conventions R1)."""
     for z in zones:
-        lo = _NEG_INF if z.lower is None else z.lower
-        hi = _POS_INF if z.upper is None else z.upper
+        lo, hi = _bounds(z)
         if lo <= value < hi:
             return z
     return None
+
+
+def classify_reading(zones: list[Zone], value: float) -> tuple[str, Zone | None]:
+    """Verdict for a reading: the matched zone's state, or an explicit abnormal
+    marker — never a bare 'unknown' (R1).
+
+    Returns (state, zone): state is a zone state (overlaps resolve to the most
+    severe matching band) or one of 'no_zones' | 'fault' | 'out_of_range_low' |
+    'out_of_range_high' | 'unrated_gap'.
+    """
+    if not zones:
+        return "no_zones", None
+    if value is None or math.isnan(value):
+        return "fault", None
+    matching = [z for z in zones if _bounds(z)[0] <= value < _bounds(z)[1]]
+    if matching:
+        best = max(matching, key=lambda z: _SEVERITY.get(z.state, 0))
+        return best.state, best
+    lowest = min(_bounds(z)[0] for z in zones)
+    highest = max(_bounds(z)[1] for z in zones)
+    if value < lowest:
+        return "out_of_range_low", None
+    if value >= highest:
+        return "out_of_range_high", None
+    return "unrated_gap", None
 
 
 def validate_zones(key: str, m: Measurement) -> list[str]:

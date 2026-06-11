@@ -54,3 +54,15 @@ def test_list_equipment_returns_all_cards():
         "equipment_id": "bellmarine-ddw-10", "manufacturer": "Bellmarine",
         "model": "DDW-10", "category": "propulsion",
     }]
+
+
+def test_find_equipment_ranks_exact_field_match_first():
+    from vessel_knowledge_mcp.models import Equipment
+    from vessel_knowledge_mcp.vault import Vault
+    exact = Equipment(equipment_id="ddw-10", manufacturer="Bellmarine",
+                      model="DDW-10", category="propulsion")
+    fuzzy = Equipment(equipment_id="ddw-100", manufacturer="Bellmarine",
+                      model="DDW-100", category="propulsion")
+    v = Vault(root=None, equipment=[fuzzy, exact])   # fuzzy listed first
+    out = tools.find_equipment(v, "ddw-10")
+    assert [m["equipment_id"] for m in out["matches"]] == ["ddw-10", "ddw-100"]

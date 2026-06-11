@@ -29,7 +29,8 @@ def dispatch(vault: Vault, bindings: dict, name: str, args: dict) -> dict:
         return tools.list_equipment(vault)
     if name == "check_reading":
         return tools.check_reading(vault, equipment_id=args["equipment_id"],
-                                   measurement=args["measurement"], value=args["value"])
+                                   measurement=args["measurement"], value=args["value"],
+                                   units=args.get("units"))
     if name == "explain_notification":
         return tools.explain_notification(vault, bindings, path=args["path"],
                                           state=args.get("state"), value=args.get("value"))
@@ -74,11 +75,17 @@ def build_server(vault: Vault, bindings: dict) -> Server:
             ),
             types.Tool(
                 name="check_reading",
-                description="Deterministic in/out-of-range verdict for a value against an equipment's rated zones.",
+                description=(
+                    "Deterministic in/out-of-range verdict for a value against an "
+                    "equipment's rated zones. `value` must be in the card's SI units "
+                    "(e.g. Kelvin, not degC); pass `units` to have that verified."
+                ),
                 inputSchema={"type": "object", "properties": {
                     "equipment_id": {"type": "string"},
                     "measurement": {"type": "string"},
-                    "value": {"type": "number"}},
+                    "value": {"type": "number"},
+                    "units": {"type": "string",
+                              "description": "Units of `value`; rejected if they differ from the card's units"}},
                     "required": ["equipment_id", "measurement", "value"]},
             ),
         ]

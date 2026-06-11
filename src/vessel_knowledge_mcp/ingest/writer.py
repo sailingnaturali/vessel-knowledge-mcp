@@ -7,9 +7,16 @@ from pathlib import Path
 from vessel_knowledge_mcp.models import Equipment
 
 _PAGE_RE = re.compile(r"source_pdf:\s*['\"]?([^'\"#]+)#page=(\d+)")
+# equipment_id becomes a filename: slug-only, no traversal (fleet conventions R5).
+_SLUG_RE = re.compile(r"^[a-z0-9-]+$")
 
 
 def write_card(vault_root: Path, eq: Equipment, *, source_pdf: str, page: int) -> Path:
+    if not _SLUG_RE.match(eq.equipment_id):
+        raise ValueError(
+            f"equipment_id {eq.equipment_id!r} is not a valid slug "
+            "(^[a-z0-9-]+$) — refusing to build a vault path from it"
+        )
     eq.source_pdf = f"{source_pdf}#page={page}"
     eq_dir = Path(vault_root) / "equipment"
     eq_dir.mkdir(parents=True, exist_ok=True)

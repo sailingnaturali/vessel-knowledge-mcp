@@ -40,3 +40,27 @@ def test_explain_message_fallback_without_value():
 def test_explain_unbound_path():
     out = tools.explain_notification(_vault(), {}, "tanks.fuel.0.currentLevel", state="warn")
     assert out["found"] is False
+
+
+def test_explain_strips_real_notifications_prefix():
+    # SignalK fires notifications.<data-path>; bindings are keyed by the bare
+    # data path. The real-world path must resolve, not silently miss.
+    out = tools.explain_notification(_vault(), _BINDINGS,
+                                     "notifications.propulsion.0.temperature",
+                                     state="alarm", value=370.0)
+    assert out["found"] is True
+    assert out["equipment_id"] == "bellmarine-ddw-10"
+    assert out["path"] == "notifications.propulsion.0.temperature"  # echo as given
+
+
+def test_explain_surfaces_state_mismatch():
+    # Fired state says normal but the value computes alarm — surface the
+    # disagreement instead of silently trusting the recomputed state.
+    out = tools.explain_notification(_vault(), _BINDINGS, "propulsion.0.temperature",
+                                     state="normal", value=370.0)
+    assert out["state"] == "alarm"
+    assert out["state_mismatch"] is True
+
+    agree = tools.explain_notification(_vault(), _BINDINGS, "propulsion.0.temperature",
+                                       state="alarm", value=370.0)
+    assert agree["state_mismatch"] is False
