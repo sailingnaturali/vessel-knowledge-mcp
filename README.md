@@ -7,7 +7,8 @@ agents via four tools.
 **Two halves:**
 - **Runtime MCP** — loads a markdown vault of equipment cards, exposes `explain_notification`,
   `get_equipment`, `find_equipment`, `list_equipment`, `check_reading`.
-- **Build-time CLI** (`vessel-knowledge`) — ingests source PDFs via the Claude API, builds
+- **Build-time CLI** (`vessel-knowledge`) — deterministically mines manual PDFs
+  (pdftotext + regex, no LLM in the data path) into per-card review files, builds
   a full-text INDEX.md, and pushes zone metadata into SignalK.
 
 **Two-fact split:** Equipment cards live in a **private vault repo** (generic per-make/model
@@ -29,8 +30,7 @@ not bar, not knots.** `display_units` is metadata only, for human readability.
 
 ## Install
 
-    uv sync                          # runtime only
-    uv sync --extra ingest           # + Claude API pipeline
+    uv sync
 
 ## Run the server
 
@@ -57,8 +57,8 @@ not bar, not knots.** `display_units` is metadata only, for human readability.
 
 ## Build-time CLI
 
-    # Ingest a manual PDF into the vault (requires ANTHROPIC_API_KEY)
-    uv run vessel-knowledge ingest manual.pdf --vault /path/to/vault
+    # Mine a manual PDF into a review file for an existing card (requires pdftotext)
+    uv run vessel-knowledge ingest manual.pdf --vault /path/to/vault --equipment-id <id>
 
     # Regenerate INDEX.md listing all cards
     uv run vessel-knowledge index --vault /path/to/vault

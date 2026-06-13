@@ -1,6 +1,6 @@
 [project]
 name = "vessel-knowledge-mcp"
-version = "0.3.0"
+version = "0.4.0"
 description = "MCP server turning equipment manuals into SignalK alarm zones and equipment lookups"
 readme = "README.md"
 license = "MIT"
@@ -11,9 +11,6 @@ dependencies = [
     "mcp>=1.27.1",
     "pyyaml>=6.0.2",
 ]
-
-[project.optional-dependencies]
-ingest = ["anthropic>=0.40.0"]
 
 [project.scripts]
 vessel-knowledge-mcp = "vessel_knowledge_mcp.server:main"
