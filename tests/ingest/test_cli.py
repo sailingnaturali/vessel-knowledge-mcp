@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from vessel_knowledge_mcp.ingest import cli
 
 CARD = """\
@@ -37,3 +39,32 @@ def test_zones_subcommand_writes_delta_and_bindings(tmp_path, capsys):
     delta = json.loads(capsys.readouterr().out)
     assert delta["updates"][0]["meta"][0]["path"] == "propulsion.0.temperature"
     assert json.loads(out_bindings.read_text())["propulsion.0.temperature"]["equipment_id"] == "bellmarine-ddw-10"
+
+
+def test_ingest_requires_equipment_id(tmp_path):
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["ingest", "manual.pdf", "--vault", str(tmp_path)])
+    assert exc.value.code == 2  # argparse usage error
+
+
+def test_ingest_refuses_unknown_equipment_id(tmp_path, capsys):
+    _seed_vault(tmp_path)
+    rc = cli.main(["ingest", "manual.pdf", "--vault", str(tmp_path),
+                   "--equipment-id", "does-not-exist"])
+    assert rc == 1
+    assert "create the equipment card first" in capsys.readouterr().err
+
+
+def test_ingest_writes_review_file(tmp_path, capsys, monkeypatch):
+    from vessel_knowledge_mcp.ingest import pdf
+    _seed_vault(tmp_path)
+    monkeypatch.setattr(pdf, "page_texts",
+                        lambda p: ["", "motor limit 90 °C and 25 kW"])
+    rc = cli.main(["ingest", "manual.pdf", "--vault", str(tmp_path),
+                   "--equipment-id", "bellmarine-ddw-10"])
+    assert rc == 0
+    review = tmp_path / "reviews" / "bellmarine-ddw-10--manual.md"
+    content = review.read_text()
+    assert "## Page 2" in content
+    assert "90 degC" in content and "363.15 K" in content
+    assert "2 candidates" in capsys.readouterr().out

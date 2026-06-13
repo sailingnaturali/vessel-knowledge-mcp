@@ -37,28 +37,26 @@ def _cmd_index(args) -> int:
 
 
 def _cmd_ingest(args) -> int:
-    # Heavy path: requires the `ingest` extra (anthropic) + pdftotext.
-    import anthropic
-
-    from vessel_knowledge_mcp.ingest.extract import extract_equipment
-    from vessel_knowledge_mcp.ingest.pdf import page_texts
-    from vessel_knowledge_mcp.ingest.writer import covered_pages, write_card
+    # Deterministic pipeline (issue #7): pdftotext -> regex mining -> review
+    # file. No model in the data path; never mints new equipment IDs.
+    from vessel_knowledge_mcp.ingest import pdf
+    from vessel_knowledge_mcp.ingest.mine import mine_pages
+    from vessel_knowledge_mcp.ingest.review import render_review, write_review
 
     vault_root = Path(args.vault)
+    card = vault_root / "equipment" / f"{args.equipment_id}.md"
+    if not card.is_file():
+        print(f"no card at {card} — create the equipment card first; "
+              "ingest mines review candidates for an existing card",
+              file=sys.stderr)
+        return 1
+    pages = pdf.page_texts(args.pdf)
+    candidates = mine_pages(pages)
     source_pdf = Path(args.pdf).name
-    done = set() if args.force else covered_pages(vault_root, source_pdf)
-    client = anthropic.Anthropic()
-    written = 0
-    for i, page in enumerate(page_texts(args.pdf), start=1):
-        if i in done:
-            continue
-        eq = extract_equipment(page, source=args.source or source_pdf, client=client)
-        if eq is None:
-            continue
-        write_card(vault_root, eq, source_pdf=source_pdf, page=i)
-        written += 1
-        print(f"page {i}: {eq.equipment_id}")
-    print(f"Ingested {written} cards from {source_pdf}")
+    out = write_review(vault_root, args.equipment_id, source_pdf,
+                       render_review(args.equipment_id, source_pdf, candidates))
+    print(f"{len(candidates)} candidates on {len({c.page for c in candidates})} "
+          f"pages -> {out}")
     return 0
 
 
@@ -66,11 +64,14 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="vessel-knowledge")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    p_ingest = sub.add_parser("ingest", help="extract equipment cards from a manual PDF")
+    p_ingest = sub.add_parser(
+        "ingest",
+        help="mine spec candidates from a manual PDF into a review file")
     p_ingest.add_argument("pdf")
     p_ingest.add_argument("--vault", required=True)
-    p_ingest.add_argument("--source", help="human source label (default: PDF filename)")
-    p_ingest.add_argument("--force", action="store_true", help="re-ingest already-covered pages")
+    p_ingest.add_argument("--equipment-id", required=True,
+                          help="existing card the candidates are for "
+                               "(ingest never creates new equipment IDs)")
     p_ingest.set_defaults(func=_cmd_ingest)
 
     p_index = sub.add_parser("index", help="regenerate INDEX.md")
