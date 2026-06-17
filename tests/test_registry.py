@@ -1,7 +1,9 @@
 import json
 
 import vessel_knowledge_mcp.registry as registry_mod
-from vessel_knowledge_mcp.registry import flatten_bindings, load_registry
+from vessel_knowledge_mcp.registry import flatten_bindings, load_registry, migrate_bindings
+from vessel_knowledge_mcp.models import Equipment, Measurement
+from vessel_knowledge_mcp.vault import Vault
 
 
 def _registry():
@@ -72,3 +74,38 @@ def test_load_registry_empty_when_fetch_fails(monkeypatch):
 
     monkeypatch.setattr(registry_mod, "_fetch_signalk_registry", _boom)
     assert load_registry() == {}
+
+
+def _vault_with(eq_id, mfr, model, category):
+    return Vault(root=None, equipment=[Equipment(
+        equipment_id=eq_id, manufacturer=mfr, model=model, category=category,
+        measurements={"temperature": Measurement(signalk_key="temperature", units="K")})])
+
+
+def test_migrate_bindings_groups_by_instance_with_identity():
+    bindings = {
+        "propulsion.port.temperature":
+            {"equipment_id": "oceanvolt-hpsp25", "measurement": "temperature"},
+        "propulsion.port.controllerTemperature":
+            {"equipment_id": "oceanvolt-hpsp25", "measurement": "controllerTemperature"},
+    }
+    vault = _vault_with("oceanvolt-hpsp25", "Oceanvolt", "HighPower ServoProp 25",
+                        "propulsion")
+    reg = migrate_bindings(bindings, vault)
+    assert set(reg) == {"propulsion.port"}
+    e = reg["propulsion.port"]
+    assert e["manufacturer"] == "Oceanvolt"
+    assert e["instance"] == "port"
+    assert e["serial"] is None
+    assert e["source"] == "declared"
+    assert {p["path"] for p in e["paths"]} == {
+        "propulsion.port.temperature", "propulsion.port.controllerTemperature"}
+
+
+def test_migrate_bindings_battery_instance_path():
+    bindings = {"electrical.batteries.house.voltage":
+                {"equipment_id": "victron-cerbo-gx", "measurement": "voltage"}}
+    vault = _vault_with("victron-cerbo-gx", "Victron", "Cerbo GX", "electrical")
+    reg = migrate_bindings(bindings, vault)
+    assert "electrical.batteries.house" in reg
+    assert reg["electrical.batteries.house"]["instance"] == "house"

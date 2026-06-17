@@ -36,6 +36,17 @@ def _cmd_index(args) -> int:
     return 0
 
 
+def _cmd_migrate_bindings(args) -> int:
+    from vessel_knowledge_mcp.registry import migrate_bindings
+
+    bindings = json.loads(Path(args.bindings).read_text(encoding="utf-8"))
+    vault = Vault.load(Path(args.vault)) if args.vault else Vault.load()
+    registry = migrate_bindings(bindings, vault)
+    Path(args.out).write_text(json.dumps(registry, indent=2) + "\n", encoding="utf-8")
+    print(f"wrote {len(registry)} instances to {args.out}")
+    return 0
+
+
 def _cmd_ingest(args) -> int:
     # Deterministic pipeline (issue #7): pdftotext -> regex mining -> review
     # file. No model in the data path; never mints new equipment IDs.
@@ -77,6 +88,13 @@ def main(argv: list[str] | None = None) -> int:
     p_index = sub.add_parser("index", help="regenerate INDEX.md")
     p_index.add_argument("--vault", required=True)
     p_index.set_defaults(func=_cmd_index)
+
+    p_mig = sub.add_parser("migrate-bindings",
+        help="convert a legacy bindings.json into an equipment-registry.json")
+    p_mig.add_argument("bindings")
+    p_mig.add_argument("--vault")
+    p_mig.add_argument("--out", required=True)
+    p_mig.set_defaults(func=_cmd_migrate_bindings)
 
     p_zones = sub.add_parser("zones", help="emit a SignalK meta-zones delta from bindings")
     p_zones.add_argument("--vault", required=True)
