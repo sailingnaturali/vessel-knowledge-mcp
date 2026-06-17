@@ -1,6 +1,6 @@
 """vessel-knowledge-mcp server. Exposes equipment tools over stdio.
 
-Vault from VESSEL_KNOWLEDGE_VAULT_PATH; bindings from VESSEL_KNOWLEDGE_BINDINGS_PATH.
+Vault from VESSEL_KNOWLEDGE_VAULT_PATH; equipment registry from SignalK (resources/equipment) or VESSEL_KNOWLEDGE_REGISTRY_PATH.
 """
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 
 from vessel_knowledge_mcp import tools
-from vessel_knowledge_mcp.bindings import load_bindings
+from vessel_knowledge_mcp.registry import flatten_bindings, load_registry
 from vessel_knowledge_mcp.vault import Vault
 
 logger = logging.getLogger(__name__)
@@ -100,7 +100,7 @@ def build_server(vault: Vault, bindings: dict) -> Server:
 
 async def _run() -> None:
     vault = Vault.load()
-    bindings = load_bindings()
+    bindings = flatten_bindings(load_registry())
     logger.info("loaded %d equipment cards, %d bound paths", len(vault.equipment), len(bindings))
     server = build_server(vault, bindings)
     async with stdio_server() as (read, write):
