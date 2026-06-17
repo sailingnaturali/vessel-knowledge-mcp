@@ -1,5 +1,6 @@
 import json
 
+import vessel_knowledge_mcp.registry as registry_mod
 from vessel_knowledge_mcp.registry import flatten_bindings, load_registry
 
 
@@ -42,9 +43,6 @@ def test_load_registry_reads_local_file(tmp_path):
 
 def test_load_registry_missing_file_is_empty(tmp_path):
     assert load_registry(tmp_path / "nope.json") == {}
-
-
-import vessel_knowledge_mcp.registry as registry_mod
 
 
 def test_load_registry_fetches_signalk_when_no_file(monkeypatch):
