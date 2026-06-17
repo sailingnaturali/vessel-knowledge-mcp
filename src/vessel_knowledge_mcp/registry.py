@@ -13,9 +13,21 @@ import logging
 import os
 from pathlib import Path
 
+import httpx
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_SIGNALK_URL = "http://localhost:3000"
+
+
+def signalk_url() -> str:
+    return os.environ.get("SIGNALK_URL", DEFAULT_SIGNALK_URL).rstrip("/")
+
+
+def _fetch_signalk_registry(url: str) -> dict:
+    resp = httpx.get(f"{url}/signalk/v2/api/resources/equipment", timeout=5.0)
+    resp.raise_for_status()
+    return resp.json()
 
 
 def registry_file() -> Path | None:
@@ -32,7 +44,11 @@ def load_registry(path: Path | None = None) -> dict:
         except (OSError, json.JSONDecodeError) as exc:
             logger.warning("registry file %s unreadable: %s", path, exc)
             return {}
-    return {}  # SignalK fetch added in Task 2
+    try:
+        return _fetch_signalk_registry(signalk_url())
+    except Exception as exc:  # network, JSON, or HTTP status
+        logger.warning("registry fetch from SignalK failed: %s", exc)
+        return {}
 
 
 def flatten_bindings(registry: dict) -> dict:

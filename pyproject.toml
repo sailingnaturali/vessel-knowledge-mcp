@@ -8,6 +8,7 @@ license-files = ["LICENSE"]
 authors = [{ name = "Bryan Clark", email = "clarkbw@gmail.com" }]
 requires-python = ">=3.11"
 dependencies = [
+    "httpx>=0.28.1",
     "mcp>=1.27.1",
     "pyyaml>=6.0.2",
 ]
