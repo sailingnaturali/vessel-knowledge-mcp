@@ -12,9 +12,11 @@ agents via four tools.
   a full-text INDEX.md, and pushes zone metadata into SignalK.
 
 **Two-fact split:** Equipment cards live in a **private vault repo** (generic per-make/model
-facts extracted from manuals). The mapping from SignalK path prefixes to equipment models
-lives in a **vessel-profile bindings file** (`bindings.json`). The engine ships no content
-— you bring both.
+facts extracted from manuals). The mapping from SignalK paths to installed equipment lives in
+the **SignalK equipment registry** (`resources/equipment`, served by
+[`@sailingnaturali/signalk-equipment-registry`](https://github.com/sailingnaturali/signalk-equipment-registry));
+the MCP reads it at runtime. The engine ships no content — you bring both. A legacy
+`bindings.json` can be converted with `vessel-knowledge migrate-bindings`.
 
 ## Proactive-alarm model
 
@@ -35,15 +37,19 @@ not bar, not knots.** `display_units` is metadata only, for human readability.
 ## Run the server
 
     VESSEL_KNOWLEDGE_VAULT_PATH=/path/to/vault \
-    VESSEL_KNOWLEDGE_BINDINGS_PATH=/path/to/bindings.json \
+    SIGNALK_URL=http://naturalaspi.local:3000 \
     uv run vessel-knowledge-mcp
+
+The registry is read from SignalK's `resources/equipment` by default; set
+`VESSEL_KNOWLEDGE_REGISTRY_PATH` to read a local registry file instead (offline/dev).
 
 ## Environment variables
 
 | Variable | Default | Purpose |
 |---|---|---|
 | `VESSEL_KNOWLEDGE_VAULT_PATH` | `~/.vessel-knowledge-vault` | Directory containing `equipment/*.md` cards |
-| `VESSEL_KNOWLEDGE_BINDINGS_PATH` | — | JSON file mapping SignalK path prefixes to equipment model IDs |
+| `SIGNALK_URL` | `http://localhost:3000` | SignalK server the equipment registry is read from (`resources/equipment`) |
+| `VESSEL_KNOWLEDGE_REGISTRY_PATH` | — | Local registry JSON file; overrides the SignalK fetch (offline/dev/CLI) |
 
 ## MCP tools
 
@@ -67,6 +73,11 @@ not bar, not knots.** `display_units` is metadata only, for human readability.
     uv run vessel-knowledge zones \
       --vault /path/to/vault \
       --bindings /path/to/bindings.json
+
+    # Convert a legacy bindings.json into an equipment-registry.json
+    uv run vessel-knowledge migrate-bindings bindings.json \
+      --vault /path/to/vault \
+      --out equipment-registry.json
 
 ## Vault structure
 
