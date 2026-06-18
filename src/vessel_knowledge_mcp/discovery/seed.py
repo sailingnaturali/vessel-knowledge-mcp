@@ -83,13 +83,6 @@ def propose_entries(devices, source_paths: dict, vault) -> dict:
     return registry
 
 
-def diff_registry(current: dict, proposed: dict) -> dict:
-    """Partition proposed instances into those not present in current ('added')
-    and those already present ('conflicts', never auto-merged — that's SP3)."""
-    return {"added": [k for k in proposed if k not in current],
-            "conflicts": [k for k in proposed if k in current]}
-
-
 def reconcile(declared: dict, discovered: dict) -> tuple[dict, list[str]]:
     """Field-level merge: declared wins on identity, discovered fills serial +
     n2k + extra paths and contributes undeclared instances. Returns (merged, warnings)."""

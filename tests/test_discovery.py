@@ -3,7 +3,7 @@ from pathlib import Path
 
 from vessel_knowledge_mcp.discovery.n2k_sources import DiscoveredDevice, parse_devices
 from vessel_knowledge_mcp.discovery.seed import (
-    diff_registry, paths_by_source, propose_entries, reconcile)
+    paths_by_source, propose_entries, reconcile)
 from vessel_knowledge_mcp.ingest.cli import main as cli_main
 from vessel_knowledge_mcp.models import Equipment, Measurement
 from vessel_knowledge_mcp.vault import Vault
@@ -114,15 +114,6 @@ def test_propose_entries_no_match_leaves_equipment_id_null():
     assert reg["tanks.fuel.0"]["category"] is None
     assert reg["tanks.fuel.0"]["instance"] == "0"
     assert reg["tanks.fuel.0"]["paths"][0]["measurement"] == "currentLevel"
-
-
-def test_diff_registry_partitions_added_and_conflicts():
-    current = {"propulsion.port": {"source": "declared"}}
-    proposed = {"propulsion.port": {"source": "discovered"},
-                "electrical.batteries.house": {"source": "discovered"}}
-    d = diff_registry(current, proposed)
-    assert d["added"] == ["electrical.batteries.house"]
-    assert d["conflicts"] == ["propulsion.port"]
 
 
 def _write(p, obj):
