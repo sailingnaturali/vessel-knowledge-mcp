@@ -48,4 +48,14 @@ def test_paths_by_source_groups_leaves_by_source():
     }
     out = paths_by_source(self_tree)
     assert sorted(out["n2k-1.22"]) == ["propulsion.0.revolutions", "propulsion.0.temperature"]
-    assert out["gps.1"] == ["navigation.position"]
+    assert sorted(out["gps.1"]) == ["navigation.position"]
+
+
+def test_paths_by_source_empty_tree():
+    assert paths_by_source({}) == {}
+
+
+def test_paths_by_source_ignores_non_string_source():
+    out = paths_by_source({"environment": {"depth":
+                          {"$source": {"label": "bad"}, "value": 5.0}}})
+    assert out == {}

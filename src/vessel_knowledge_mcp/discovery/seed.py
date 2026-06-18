@@ -4,7 +4,8 @@ from __future__ import annotations
 
 # Self-tree leaf keys that are value/metadata, not child paths.
 _LEAF_KEYS = {"value", "$source", "timestamp", "values", "meta", "pgn", "sentence"}
-# Top-level self keys that aren't data paths.
+# Top-level self keys that aren't data paths. `$source` is included defensively —
+# some server versions surface it at the vessel root.
 _SELF_SKIP = {"uuid", "name", "mmsi", "type", "url", "version", "$source", "communication"}
 
 
@@ -17,6 +18,8 @@ def paths_by_source(self_tree: dict) -> dict[str, list[str]]:
             return
         src = node.get("$source")
         if isinstance(src, str):
+            # A SignalK leaf path node carries $source and has no further path
+            # children, so stopping here is correct (and intended).
             out.setdefault(src, []).append(prefix)
             return
         for k, v in node.items():
