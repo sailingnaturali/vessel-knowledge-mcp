@@ -130,3 +130,36 @@ def explain_notification(vault: Vault, bindings: dict, path: str,
 
 def _zone_summary(z) -> dict:
     return {"state": z.state, "lower": z.lower, "upper": z.upper, "message": z.message}
+
+
+def _installed_summary(vault: Vault, instance_id: str, entry: dict) -> dict:
+    eq_id = entry.get("equipment_id")
+    has_card = bool(eq_id) and vault.get(eq_id) is not None
+    return {"instance_id": instance_id, "instance": entry.get("instance"),
+            "manufacturer": entry.get("manufacturer"), "model": entry.get("model"),
+            "serial": entry.get("serial"), "category": entry.get("category"),
+            "source": entry.get("source"), "equipment_id": eq_id, "has_card": has_card}
+
+
+def list_installed(vault: Vault, registry: dict) -> dict:
+    """Every installed instance (registry entry) with a vault-link flag."""
+    return {"installed": [_installed_summary(vault, iid, e) for iid, e in registry.items()]}
+
+
+def get_installed(vault: Vault, registry: dict, instance: str) -> dict:
+    """One installed instance joined with its full vault card. Resolves `instance`
+    as an exact registry key, else a unique match on the entry `instance` field."""
+    entry = registry.get(instance)
+    instance_id = instance
+    if entry is None:
+        hits = [(iid, e) for iid, e in registry.items() if e.get("instance") == instance]
+        if len(hits) > 1:
+            return {"found": False, "instance": instance,
+                    "error": f"ambiguous instance '{instance}': {[i for i, _ in hits]}"}
+        if not hits:
+            return {"found": False, "instance": instance}
+        instance_id, entry = hits[0]
+    eq_id = entry.get("equipment_id")
+    card = vault.get(eq_id) if eq_id else None
+    return {"found": True, "instance_id": instance_id, "installed": entry,
+            "card": _card_dict(card) if card else None}
