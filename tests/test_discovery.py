@@ -3,7 +3,7 @@ from pathlib import Path
 
 from vessel_knowledge_mcp.discovery.n2k_sources import DiscoveredDevice, parse_devices
 from vessel_knowledge_mcp.discovery.seed import (
-    diff_registry, paths_by_source, propose_entries)
+    diff_registry, paths_by_source, propose_entries, reconcile)
 from vessel_knowledge_mcp.ingest.cli import main as cli_main
 from vessel_knowledge_mcp.models import Equipment, Measurement
 from vessel_knowledge_mcp.vault import Vault
@@ -183,3 +183,55 @@ def test_discover_cli_writes_added_only(tmp_path):
     assert "electrical.batteries.house" in merged       # declared untouched
     assert merged["propulsion.0"]["source"] == "discovered"
     assert merged["propulsion.0"]["equipment_id"] == "oceanvolt-hpsp25"
+
+
+def _declared(serial=None):
+    return {"propulsion.port": {
+        "equipment_id": "oceanvolt-hpsp25", "manufacturer": "Oceanvolt",
+        "model": "HighPower ServoProp 25", "serial": serial, "instance": "port",
+        "category": "propulsion", "source": "declared",
+        "paths": [{"path": "propulsion.port.temperature", "measurement": "temperature"}]}}
+
+
+def _discovered(eq="oceanvolt-hpsp25", serial="BUS-9", extra_path=True):
+    paths = [{"path": "propulsion.port.revolutions", "measurement": "revolutions"}] \
+        if extra_path else []
+    return {"propulsion.port": {
+        "equipment_id": eq, "manufacturer": "Oceanvolt", "model": "ServoProp 25",
+        "serial": serial, "instance": "port", "category": "propulsion",
+        "source": "discovered", "paths": paths, "n2k": {"manufacturerCode": 847}}}
+
+
+def test_reconcile_fills_serial_keeps_declared_identity():
+    merged, warnings = reconcile(_declared(serial=None), _discovered())
+    e = merged["propulsion.port"]
+    assert e["serial"] == "BUS-9"
+    assert e["model"] == "HighPower ServoProp 25"
+    assert e["source"] == "declared"
+    assert e["n2k"] == {"manufacturerCode": 847}
+    assert {p["path"] for p in e["paths"]} == {
+        "propulsion.port.temperature", "propulsion.port.revolutions"}
+    assert warnings == []
+
+
+def test_reconcile_declared_serial_wins():
+    merged, _ = reconcile(_declared(serial="DECL"), _discovered(serial="BUS-9"))
+    assert merged["propulsion.port"]["serial"] == "DECL"
+
+
+def test_reconcile_discovered_only_added():
+    merged, warnings = reconcile({}, _discovered())
+    assert merged["propulsion.port"]["source"] == "discovered"
+    assert any("not declared" in w for w in warnings)
+
+
+def test_reconcile_identity_conflict_warns_keeps_declared():
+    merged, warnings = reconcile(_declared(), _discovered(eq="simrad-xx"))
+    assert merged["propulsion.port"]["equipment_id"] == "oceanvolt-hpsp25"
+    assert any("simrad-xx" in w for w in warnings)
+
+
+def test_reconcile_idempotent():
+    once, _ = reconcile(_declared(serial=None), _discovered())
+    twice, _ = reconcile(once, _discovered())
+    assert twice == once

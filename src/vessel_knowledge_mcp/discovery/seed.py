@@ -88,3 +88,38 @@ def diff_registry(current: dict, proposed: dict) -> dict:
     and those already present ('conflicts', never auto-merged — that's SP3)."""
     return {"added": [k for k in proposed if k not in current],
             "conflicts": [k for k in proposed if k in current]}
+
+
+def reconcile(declared: dict, discovered: dict) -> tuple[dict, list[str]]:
+    """Field-level merge: declared wins on identity, discovered fills serial +
+    n2k + extra paths and contributes undeclared instances. Returns (merged, warnings)."""
+    merged: dict[str, dict] = {}
+    warnings: list[str] = []
+    for iid, d in declared.items():
+        x = discovered.get(iid)
+        if x is None:
+            merged[iid] = dict(d)
+            continue
+        m = dict(d)  # declared identity authoritative
+        if not d.get("serial") and x.get("serial"):
+            m["serial"] = x["serial"]
+        if x.get("n2k"):
+            m["n2k"] = x["n2k"]
+        seen = {p["path"] for p in d.get("paths", [])}
+        m["paths"] = list(d.get("paths", [])) + [
+            p for p in x.get("paths", []) if p["path"] not in seen]
+        m["source"] = "declared"
+        if x.get("equipment_id") and x["equipment_id"] != d.get("equipment_id"):
+            warnings.append(
+                f"{iid}: discovered equipment_id '{x['equipment_id']}' != "
+                f"declared '{d.get('equipment_id')}' (kept declared)")
+        merged[iid] = m
+    for iid, x in discovered.items():
+        if iid not in declared:
+            merged[iid] = dict(x)
+            warnings.append(f"{iid}: discovered but not declared — add it to the profile")
+    if discovered:
+        for iid in declared:
+            if iid not in discovered:
+                warnings.append(f"{iid}: declared but not seen on the bus")
+    return merged, warnings
