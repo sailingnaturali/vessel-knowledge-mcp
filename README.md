@@ -2,11 +2,12 @@
 
 MCP server that turns equipment manuals into a private markdown vault of equipment
 cards and exposes per-reading alarm-zone lookups and notification explanations to AI
-agents via four tools.
+agents via seven tools.
 
 **Two halves:**
 - **Runtime MCP** — loads a markdown vault of equipment cards, exposes `explain_notification`,
-  `get_equipment`, `find_equipment`, `list_equipment`, `check_reading`.
+  `get_equipment`, `find_equipment`, `list_equipment`, `check_reading`, `list_installed`,
+  `get_installed`.
 - **Build-time CLI** (`vessel-knowledge`) — deterministically mines manual PDFs
   (pdftotext + regex, no LLM in the data path) into per-card review files, builds
   a full-text INDEX.md, and pushes zone metadata into SignalK.
