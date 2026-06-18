@@ -12,7 +12,7 @@ from dataclasses import dataclass
 # `manufacturer` None and the model string still drives matching.
 MANUFACTURER_CODES: dict[int, str] = {
     358: "Victron Energy",
-    1857: "Oceanvolt",
+    847: "Oceanvolt",
 }
 
 

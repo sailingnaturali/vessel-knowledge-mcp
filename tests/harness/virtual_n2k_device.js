@@ -14,8 +14,8 @@ function emit(pgn, fields) {
 }
 
 function tick() {
-  // 60928 ISO Address Claim -> manufacturerCode (Oceanvolt = 1857)
-  emit(60928, { 'Unique Number': 12345, 'Manufacturer Code': 1857,
+  // 60928 ISO Address Claim -> manufacturerCode (Oceanvolt = 847)
+  emit(60928, { 'Unique Number': 12345, 'Manufacturer Code': 847,
                 'Device Instance Lower': 0, 'Device Instance Upper': 0,
                 'Device Function': 140, 'Device Class': 50,
                 'System Instance': 0, 'Industry Group': 4 })
