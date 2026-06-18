@@ -109,3 +109,12 @@ def test_migrate_bindings_battery_instance_path():
     reg = migrate_bindings(bindings, vault)
     assert "electrical.batteries.house" in reg
     assert reg["electrical.batteries.house"]["instance"] == "house"
+
+
+def test_instance_of_path_families():
+    from vessel_knowledge_mcp.registry import _instance_of
+    assert _instance_of("propulsion.port.temperature") == ("propulsion.port", "port")
+    assert _instance_of("electrical.batteries.house.voltage") == (
+        "electrical.batteries.house", "house")
+    # tanks are <type>.<instance>; instance is the 3rd segment, not the fluid type
+    assert _instance_of("tanks.fuel.0.currentLevel") == ("tanks.fuel.0", "0")
