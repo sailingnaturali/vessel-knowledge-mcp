@@ -19,7 +19,8 @@ from vessel_knowledge_mcp.vault import Vault
 logger = logging.getLogger(__name__)
 
 
-def dispatch(vault: Vault, bindings: dict, name: str, args: dict) -> dict:
+def dispatch(vault: Vault, bindings: dict, name: str, args: dict,
+             registry: dict | None = None) -> dict:
     """Route a tool call to its implementation. Shared by the server and tests."""
     if name == "get_equipment":
         return tools.get_equipment(vault, equipment_id=args["equipment_id"])
@@ -34,10 +35,14 @@ def dispatch(vault: Vault, bindings: dict, name: str, args: dict) -> dict:
     if name == "explain_notification":
         return tools.explain_notification(vault, bindings, path=args["path"],
                                           state=args.get("state"), value=args.get("value"))
+    if name == "list_installed":
+        return tools.list_installed(vault, registry or {})
+    if name == "get_installed":
+        return tools.get_installed(vault, registry or {}, instance=args["instance"])
     raise ValueError(f"Unknown tool: {name}")
 
 
-def build_server(vault: Vault, bindings: dict) -> Server:
+def build_server(vault: Vault, bindings: dict, registry: dict | None = None) -> Server:
     server = Server("vessel-knowledge-mcp")
 
     @server.list_tools()
@@ -88,11 +93,25 @@ def build_server(vault: Vault, bindings: dict) -> Server:
                               "description": "Units of `value`; rejected if they differ from the card's units"}},
                     "required": ["equipment_id", "measurement", "value"]},
             ),
+            types.Tool(
+                name="list_installed",
+                description=("List the equipment actually installed on this vessel (per-instance: "
+                             "manufacturer, model, serial, category) from the SignalK equipment registry."),
+                inputSchema={"type": "object", "properties": {}},
+            ),
+            types.Tool(
+                name="get_installed",
+                description=("One installed instance (e.g. 'propulsion.port' or 'port') joined with "
+                             "its full equipment card — identity, serial, rated zones, service intervals."),
+                inputSchema={"type": "object",
+                             "properties": {"instance": {"type": "string"}},
+                             "required": ["instance"]},
+            ),
         ]
 
     @server.call_tool()
     async def _call_tool(name: str, arguments: dict | None) -> list[types.TextContent]:
-        result = dispatch(vault, bindings, name, arguments or {})
+        result = dispatch(vault, bindings, name, arguments or {}, registry=registry)
         return [types.TextContent(type="text", text=json.dumps(result, ensure_ascii=False))]
 
     return server
@@ -100,9 +119,11 @@ def build_server(vault: Vault, bindings: dict) -> Server:
 
 async def _run() -> None:
     vault = Vault.load()
-    bindings = flatten_bindings(load_registry())
-    logger.info("loaded %d equipment cards, %d bound paths", len(vault.equipment), len(bindings))
-    server = build_server(vault, bindings)
+    registry = load_registry()
+    bindings = flatten_bindings(registry)
+    logger.info("loaded %d equipment cards, %d installed instances, %d bound paths",
+                len(vault.equipment), len(registry), len(bindings))
+    server = build_server(vault, bindings, registry=registry)
     async with stdio_server() as (read, write):
         await server.run(read, write, server.create_initialization_options())
 

@@ -76,3 +76,16 @@ def test_get_installed_null_equipment_id():
     out = tools.get_installed(_vault(), reg, "sensor.0")
     assert out["found"] is True
     assert out["card"] is None
+
+
+from vessel_knowledge_mcp.server import dispatch
+
+
+def test_dispatch_list_installed():
+    out = dispatch(_vault(), {}, "list_installed", {}, registry=_registry())
+    assert any(e["instance_id"] == "propulsion.port" for e in out["installed"])
+
+
+def test_dispatch_get_installed():
+    out = dispatch(_vault(), {}, "get_installed", {"instance": "port"}, registry=_registry())
+    assert out["instance_id"] == "propulsion.port"
