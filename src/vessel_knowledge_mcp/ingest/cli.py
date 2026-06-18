@@ -55,8 +55,12 @@ def _cmd_discover(args) -> int:
 
     if args.signalk:
         base = args.signalk.rstrip("/")
-        sources = httpx.get(f"{base}/signalk/v1/api/sources", timeout=5.0).json()
-        self_tree = httpx.get(f"{base}/signalk/v1/api/vessels/self", timeout=5.0).json()
+        try:
+            sources = httpx.get(f"{base}/signalk/v1/api/sources", timeout=5.0).json()
+            self_tree = httpx.get(f"{base}/signalk/v1/api/vessels/self", timeout=5.0).json()
+        except httpx.HTTPError as exc:
+            print(f"SignalK fetch failed: {exc}", file=sys.stderr)
+            return 1
     else:
         if not (args.sources and args.self_tree):
             print("need --signalk URL, or both --sources and --self", file=sys.stderr)

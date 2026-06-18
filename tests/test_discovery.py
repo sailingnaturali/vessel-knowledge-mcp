@@ -124,7 +124,20 @@ def _write(p, obj):
     Path(p).write_text(json.dumps(obj), encoding="utf-8")
 
 
+def _seed_vault(tmp_path):
+    """A self-contained vault (no dependency on the sibling vault repo / CWD)."""
+    eq_dir = tmp_path / "vault" / "equipment"
+    eq_dir.mkdir(parents=True)
+    (eq_dir / "oceanvolt-hpsp25.md").write_text(
+        "---\nequipment_id: oceanvolt-hpsp25\nmanufacturer: Oceanvolt\n"
+        "model: HighPower ServoProp 25\ncategory: propulsion\nmeasurements:\n"
+        "  temperature:\n    signalk_key: temperature\n    units: K\n---\n",
+        encoding="utf-8")
+    return tmp_path / "vault"
+
+
 def test_discover_cli_writes_added_only(tmp_path):
+    vault = _seed_vault(tmp_path)
     sources = {"n2k-1": {"22": {"n2k": {"manufacturerCode": 1857,
                                         "modelId": "ServoProp 25",
                                         "modelSerialCode": "OV-1"}}}}
@@ -136,7 +149,7 @@ def test_discover_cli_writes_added_only(tmp_path):
     rc = cli_main(["discover",
                    "--sources", str(tmp_path / "sources.json"),
                    "--self", str(tmp_path / "self.json"),
-                   "--vault", "../vessel-knowledge-vault",
+                   "--vault", str(vault),
                    "--registry", str(tmp_path / "registry.json"),
                    "--write"])
     assert rc == 0
