@@ -1,7 +1,12 @@
 import json
 from pathlib import Path
 
-from vessel_knowledge_mcp.discovery.n2k_sources import parse_devices, DiscoveredDevice
+from vessel_knowledge_mcp.discovery.n2k_sources import DiscoveredDevice, parse_devices
+from vessel_knowledge_mcp.discovery.seed import (
+    diff_registry, paths_by_source, propose_entries)
+from vessel_knowledge_mcp.ingest.cli import main as cli_main
+from vessel_knowledge_mcp.models import Equipment, Measurement
+from vessel_knowledge_mcp.vault import Vault
 
 
 def test_parse_devices_extracts_n2k_identity():
@@ -33,9 +38,6 @@ def test_parse_devices_string_manufacturer_code():
     assert d.model == "Cerbo GX"
 
 
-from vessel_knowledge_mcp.discovery.seed import paths_by_source
-
-
 def test_paths_by_source_groups_leaves_by_source():
     self_tree = {
         "uuid": "urn:mrn:signalk:x",
@@ -62,13 +64,6 @@ def test_paths_by_source_ignores_non_string_source():
     out = paths_by_source({"environment": {"depth":
                           {"$source": {"label": "bad"}, "value": 5.0}}})
     assert out == {}
-
-
-from vessel_knowledge_mcp.discovery.seed import diff_registry
-from vessel_knowledge_mcp.discovery.n2k_sources import DiscoveredDevice
-from vessel_knowledge_mcp.discovery.seed import propose_entries
-from vessel_knowledge_mcp.models import Equipment, Measurement
-from vessel_knowledge_mcp.vault import Vault
 
 
 def _vault():
@@ -115,9 +110,6 @@ def test_diff_registry_partitions_added_and_conflicts():
     d = diff_registry(current, proposed)
     assert d["added"] == ["electrical.batteries.house"]
     assert d["conflicts"] == ["propulsion.port"]
-
-
-from vessel_knowledge_mcp.ingest.cli import main as cli_main
 
 
 def _write(p, obj):
