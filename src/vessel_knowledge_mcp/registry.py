@@ -74,6 +74,22 @@ def _instance_of(path: str) -> tuple[str, str]:
     return f"{parts[0]}.{parts[1]}", parts[1]
 
 
+def _declared_entry(vault, equipment_id: str, instance: str, serial: str | None = None) -> dict:
+    """A registry entry skeleton (source='declared', empty paths) with identity
+    pulled from the linked vault card (None fields if the card is absent)."""
+    eq = vault.get(equipment_id)
+    return {
+        "equipment_id": equipment_id,
+        "manufacturer": eq.manufacturer if eq else None,
+        "model": eq.model if eq else None,
+        "serial": serial,
+        "instance": instance,
+        "category": eq.category if eq else None,
+        "source": "declared",
+        "paths": [],
+    }
+
+
 def migrate_bindings(bindings: dict, vault) -> dict:
     """Convert a legacy bindings.json (path -> {equipment_id, measurement}) into a
     registry collection grouped by instance. Identity is taken from the linked
@@ -83,17 +99,7 @@ def migrate_bindings(bindings: dict, vault) -> dict:
         instance_id, instance = _instance_of(path)
         entry = registry.get(instance_id)
         if entry is None:
-            eq = vault.get(b["equipment_id"])
-            entry = registry[instance_id] = {
-                "equipment_id": b["equipment_id"],
-                "manufacturer": eq.manufacturer if eq else None,
-                "model": eq.model if eq else None,
-                "serial": None,
-                "instance": instance,
-                "category": eq.category if eq else None,
-                "source": "declared",
-                "paths": [],
-            }
+            entry = registry[instance_id] = _declared_entry(vault, b["equipment_id"], instance)
         entry["paths"].append({"path": path, "measurement": b["measurement"]})
     return registry
 
