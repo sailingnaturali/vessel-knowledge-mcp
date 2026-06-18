@@ -2,6 +2,9 @@
 vault cards, propose registry entries, and diff against the current registry."""
 from __future__ import annotations
 
+from vessel_knowledge_mcp.registry import _instance_of
+from vessel_knowledge_mcp.tools import find_equipment
+
 # Self-tree leaf keys that are value/metadata, not child paths.
 _LEAF_KEYS = {"value", "$source", "timestamp", "values", "meta", "pgn", "sentence"}
 # Top-level self keys that aren't data paths. `$source` is included defensively —
@@ -32,3 +35,39 @@ def paths_by_source(self_tree: dict) -> dict[str, list[str]]:
             continue
         walk(v, k)
     return out
+
+
+def match_equipment_id(vault, manufacturer: str | None, model: str | None) -> str | None:
+    """Best vault equipment_id for a discovered device, via the find_equipment
+    token scorer. None when no token matches."""
+    query = " ".join(t for t in (manufacturer, model) if t)
+    if not query:
+        return None
+    matches = find_equipment(vault, query)["matches"]
+    return matches[0]["equipment_id"] if matches else None
+
+
+def propose_entries(devices, paths_by_source: dict, vault) -> dict:
+    """Build proposed registry entries (source='discovered') from discovered
+    devices + their self-tree paths, grouped by instance."""
+    registry: dict[str, dict] = {}
+    for dev in devices:
+        eq_id = match_equipment_id(vault, dev.manufacturer, dev.model)
+        card = vault.get(eq_id) if eq_id else None
+        for path in paths_by_source.get(dev.source_ref, []):
+            instance_id, instance = _instance_of(path)
+            entry = registry.get(instance_id)
+            if entry is None:
+                entry = registry[instance_id] = {
+                    "equipment_id": eq_id,
+                    "manufacturer": dev.manufacturer,
+                    "model": dev.model,
+                    "serial": dev.serial,
+                    "instance": instance,
+                    "category": card.category if card else None,
+                    "source": "discovered",
+                    "paths": [],
+                    "n2k": {"manufacturerCode": dev.manufacturer_code},
+                }
+            entry["paths"].append({"path": path, "measurement": path.rsplit(".", 1)[-1]})
+    return registry
