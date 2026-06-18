@@ -82,13 +82,22 @@ The registry is read from SignalK's `resources/equipment` by default; set
       --vault /path/to/vault \
       --out equipment-registry.json
 
-    # Propose registry entries from live SignalK N2K discovery (or fixtures)
+    # Build the declared registry from profile bindings + vault
+    uv run vessel-knowledge build-registry \
+      --bindings bindings.json \
+      --vault /path/to/vault \
+      --out equipment-registry.declared.json
+
+    # Reconcile declared + live N2K discovery into the served registry
     uv run vessel-knowledge discover \
       --signalk http://naturalaspi.local:3000 \
       --vault /path/to/vault \
-      --registry /path/to/equipment-registry.json   # add --write to additively merge
+      --declared equipment-registry.declared.json \
+      --out equipment-registry.json
 
-Discovery proposes `source: "discovered"` entries and additively writes only NEW instances; existing (declared) instances are reported as conflicts and never overwritten.
+Discovery **reconciles** field-level: declared identity wins, the bus fills `serial` (and
+contributes any undeclared instances as `source: "discovered"`); identity conflicts are warned,
+never overwritten. `build-registry` refuses to write an empty registry (no equipment bindings).
 
 ## Vault structure
 
