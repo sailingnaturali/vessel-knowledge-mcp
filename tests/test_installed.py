@@ -1,6 +1,7 @@
 from vessel_knowledge_mcp.models import Equipment, Measurement
 from vessel_knowledge_mcp.vault import Vault
 from vessel_knowledge_mcp import tools
+from vessel_knowledge_mcp.server import dispatch
 
 
 def _vault():
@@ -78,12 +79,14 @@ def test_get_installed_null_equipment_id():
     assert out["card"] is None
 
 
-from vessel_knowledge_mcp.server import dispatch
-
-
 def test_dispatch_list_installed():
     out = dispatch(_vault(), {}, "list_installed", {}, registry=_registry())
     assert any(e["instance_id"] == "propulsion.port" for e in out["installed"])
+
+
+def test_dispatch_list_installed_no_registry():
+    out = dispatch(_vault(), {}, "list_installed", {})  # registry omitted -> {}
+    assert out["installed"] == []
 
 
 def test_dispatch_get_installed():

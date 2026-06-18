@@ -102,7 +102,8 @@ def build_server(vault: Vault, bindings: dict, registry: dict | None = None) -> 
             types.Tool(
                 name="get_installed",
                 description=("One installed instance (e.g. 'propulsion.port' or 'port') joined with "
-                             "its full equipment card — identity, serial, rated zones, service intervals."),
+                             "its full equipment card — identity, serial, rated zones, service "
+                             "intervals. `card` is null when no vault card matches the instance."),
                 inputSchema={"type": "object",
                              "properties": {"instance": {"type": "string"}},
                              "required": ["instance"]},
