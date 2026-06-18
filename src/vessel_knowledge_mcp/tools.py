@@ -161,7 +161,8 @@ def get_installed(vault: Vault, registry: dict, instance: str) -> dict:
         instance_id, entry = hits[0]
     eq_id = entry.get("equipment_id")
     card = vault.get(eq_id) if eq_id else None
-    # Shallow-copy the entry: the registry is loaded once and shared across calls,
-    # so never hand a caller a live reference into it.
+    # Shallow-copy the entry so a caller can't add/replace top-level keys on the
+    # shared (load-once) registry. The result is JSON-serialized immediately by the
+    # server, so the still-shared nested `paths` list is never mutated in practice.
     return {"found": True, "instance_id": instance_id, "installed": dict(entry),
             "card": _card_dict(card) if card else None}
