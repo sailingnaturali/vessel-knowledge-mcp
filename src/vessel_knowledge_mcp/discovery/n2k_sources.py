@@ -34,9 +34,11 @@ def parse_devices(sources_tree: dict) -> list[DiscoveredDevice]:
             if not isinstance(sub, dict):
                 continue
             n2k = sub.get("n2k")
-            if not isinstance(n2k, dict) or n2k.get("manufacturerCode") is None:
+            if not isinstance(n2k, dict):
                 continue
             raw = n2k.get("manufacturerCode")
+            if raw is None:
+                continue
             if isinstance(raw, str):
                 manufacturer, code = raw, None
             else:

@@ -27,3 +27,4 @@ def test_parse_devices_string_manufacturer_code():
     d = parse_devices(sources)[0]
     assert d.manufacturer == "Victron Energy"
     assert d.manufacturer_code is None
+    assert d.model == "Cerbo GX"
