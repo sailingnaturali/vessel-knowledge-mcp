@@ -120,3 +120,30 @@ def test_instance_of_path_families():
     assert _instance_of("tanks.fuel.0.currentLevel") == ("tanks.fuel.0", "0")
     assert _instance_of("electrical.inverters.main.acPower") == (
         "electrical.inverters.main", "main")
+
+
+def test_build_registry_from_prefix_bindings():
+    from vessel_knowledge_mcp.registry import build_registry
+    vault = _vault_with("oceanvolt-hpsp25", "Oceanvolt", "HighPower ServoProp 25", "propulsion")
+    bindings = [{"path_prefix": "propulsion.port",
+                 "equipment_id": "oceanvolt-hpsp25", "serial": "OV-1"}]
+    reg, warnings = build_registry(bindings, vault)
+    assert warnings == []
+    e = reg["propulsion.port"]
+    assert e["equipment_id"] == "oceanvolt-hpsp25"
+    assert e["manufacturer"] == "Oceanvolt"
+    assert e["serial"] == "OV-1"
+    assert e["instance"] == "port"
+    assert e["source"] == "declared"
+    assert e["paths"] == [{"path": "propulsion.port.temperature", "measurement": "temperature"}]
+
+
+def test_build_registry_unknown_card_warns_null_identity():
+    from vessel_knowledge_mcp.registry import build_registry
+    vault = _vault_with("oceanvolt-hpsp25", "Oceanvolt", "X", "propulsion")
+    reg, warnings = build_registry(
+        [{"path_prefix": "tanks.fuel.0", "equipment_id": "nope"}], vault)
+    assert reg["tanks.fuel.0"]["equipment_id"] == "nope"
+    assert reg["tanks.fuel.0"]["manufacturer"] is None
+    assert reg["tanks.fuel.0"]["serial"] is None
+    assert any("nope" in w for w in warnings)

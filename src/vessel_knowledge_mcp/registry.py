@@ -104,6 +104,28 @@ def migrate_bindings(bindings: dict, vault) -> dict:
     return registry
 
 
+def build_registry(bindings: list[dict], vault) -> tuple[dict, list[str]]:
+    """Build the *declared* registry from profile bindings (a list of
+    {path_prefix, equipment_id, serial?}) + the vault. Paths come from the linked
+    card's measurements (`<prefix>.<signalk_key>`). Returns (registry, warnings)."""
+    registry: dict[str, dict] = {}
+    warnings: list[str] = []
+    for b in bindings:
+        prefix = b["path_prefix"]
+        _instance_id, instance = _instance_of(prefix)
+        eq = vault.get(b["equipment_id"])
+        if eq is None:
+            warnings.append(
+                f"{prefix}: equipment_id '{b['equipment_id']}' not in vault — null identity")
+        entry = _declared_entry(vault, b["equipment_id"], instance, b.get("serial"))
+        if eq is not None:
+            for mkey, m in eq.measurements.items():
+                entry["paths"].append(
+                    {"path": f"{prefix}.{m.signalk_key}", "measurement": mkey})
+        registry[prefix] = entry
+    return registry, warnings
+
+
 def flatten_bindings(registry: dict) -> dict:
     """Flatten registry entries' paths[] into {path: {equipment_id, measurement}}.
 
