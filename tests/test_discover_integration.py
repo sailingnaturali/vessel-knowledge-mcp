@@ -107,22 +107,27 @@ def test_discover_against_virtual_device(tmp_path):
         assert device_seen, ("virtual device never appeared in the sources tree\n"
                              + "".join(log_lines))
 
+        declared = {"propulsion.port": {
+            "equipment_id": "oceanvolt-hpsp25", "manufacturer": "Oceanvolt",
+            "model": "HighPower ServoProp 25", "serial": None, "instance": "port",
+            "category": "propulsion", "source": "declared",
+            "paths": [{"path": "propulsion.port.temperature",
+                       "measurement": "temperature"}]}}
+        declared_path = tmp_path / "declared.json"
+        declared_path.write_text(json.dumps(declared))
+        served_path = tmp_path / "served.json"
+
         out = subprocess.run(
             ["uv", "run", "vessel-knowledge", "discover", "--signalk", base,
-             "--vault", str(REPO.parent / "vessel-knowledge-vault")],
+             "--vault", str(REPO.parent / "vessel-knowledge-vault"),
+             "--declared", str(declared_path), "--out", str(served_path)],
             cwd=str(REPO), capture_output=True, text=True)
         assert out.returncode == 0, out.stderr
-        # Engine instance 0 in PGN 127489 is the discrete enum "Single Engine
-        # or Dual Engine Port", which n2k-signalk maps to the `port` instance
-        # label — so a real instance-0 Oceanvolt drive surfaces as
-        # `propulsion.port`, not `propulsion.0`. The proof we want is that a
-        # real N2K device, decoded by the real server, is matched to the
-        # correct vault card and grouped under its (single) propulsion instance.
-        assert "propulsion.port" in out.stdout, out.stdout
-        assert "oceanvolt-hpsp25" in out.stdout, out.stdout
-        # The notification fan-out from the same device must NOT become a
-        # bogus equipment instance (regression: notifications are skipped).
-        assert "notifications" not in out.stdout, out.stdout
+        served = json.loads(served_path.read_text())
+        e = served["propulsion.port"]
+        assert e["equipment_id"] == "oceanvolt-hpsp25"   # declared identity kept
+        assert e["serial"], "expected the bus serial (modelSerialCode) to fill the null declared serial"
+        assert "notifications" not in served               # fan-out still excluded
     finally:
         proc.terminate()
         try:
