@@ -2,6 +2,7 @@ import json
 import os
 import socket
 import subprocess
+import threading
 import time
 from pathlib import Path
 
@@ -42,6 +43,8 @@ def _has_n2k_identity(sources: dict) -> bool:
 def test_discover_against_virtual_device(tmp_path):
     if not (SIGNALK / "bin" / "signalk-server").exists():
         pytest.skip("signalk-server repo not present alongside this repo")
+    if not (REPO.parent / "vessel-knowledge-vault").exists():
+        pytest.skip("vessel-knowledge-vault not present alongside this repo")
 
     port = _free_port()
     emitter = HARNESS / "virtual_n2k_device.js"
@@ -80,13 +83,18 @@ def test_discover_against_virtual_device(tmp_path):
          "-s", "settings.json"],
         cwd=str(SIGNALK), env=env,
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    # Drain stdout continuously so a chatty startup can't fill the pipe buffer
+    # and block the server (which would turn a startup error into a 60s timeout
+    # with no diagnostics).
+    log_lines: list[str] = []
+    threading.Thread(target=lambda: log_lines.extend(proc.stdout),
+                     daemon=True).start()
     try:
         base = f"http://localhost:{port}"
         device_seen = False
         for _ in range(60):
             if proc.poll() is not None:
-                raise AssertionError(
-                    "signalk-server exited:\n" + (proc.stdout.read() or ""))
+                raise AssertionError("signalk-server exited:\n" + "".join(log_lines))
             try:
                 src = httpx.get(
                     f"{base}/signalk/v1/api/sources", timeout=2).json()
@@ -96,7 +104,8 @@ def test_discover_against_virtual_device(tmp_path):
             except Exception:
                 pass
             time.sleep(1)
-        assert device_seen, "virtual device never appeared in the sources tree"
+        assert device_seen, ("virtual device never appeared in the sources tree\n"
+                             + "".join(log_lines))
 
         out = subprocess.run(
             ["uv", "run", "vessel-knowledge", "discover", "--signalk", base,

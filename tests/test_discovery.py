@@ -66,6 +66,19 @@ def test_paths_by_source_ignores_non_string_source():
     assert out == {}
 
 
+def test_paths_by_source_skips_notifications():
+    # n2k-signalk fans one engine PGN into many notifications.* alert leaves that
+    # carry the device $source; those must never become equipment data paths.
+    self_tree = {
+        "propulsion": {"port": {"temperature": {"value": 320.0, "$source": "n2k-1.22"}}},
+        "notifications": {"propulsion": {"port": {"temperature":
+                          {"value": {"state": "alert"}, "$source": "n2k-1.22"}}}},
+    }
+    out = paths_by_source(self_tree)
+    assert out["n2k-1.22"] == ["propulsion.port.temperature"]
+    assert not any(p.startswith("notifications") for p in out["n2k-1.22"])
+
+
 def _vault():
     return Vault(root=None, equipment=[Equipment(
         equipment_id="oceanvolt-hpsp25", manufacturer="Oceanvolt",
