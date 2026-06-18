@@ -47,6 +47,22 @@ def _cmd_migrate_bindings(args) -> int:
     return 0
 
 
+def _cmd_build_registry(args) -> int:
+    from vessel_knowledge_mcp.registry import build_registry
+
+    bindings = json.loads(Path(args.bindings).read_text(encoding="utf-8"))
+    vault = Vault.load(Path(args.vault)) if args.vault else Vault.load()
+    registry, warnings = build_registry(bindings, vault)
+    for w in warnings:
+        print(f"WARNING: {w}", file=sys.stderr)
+    if not registry:
+        print("refusing to write an empty registry (no equipment bindings)", file=sys.stderr)
+        return 1
+    Path(args.out).write_text(json.dumps(registry, indent=2) + "\n", encoding="utf-8")
+    print(f"wrote {len(registry)} declared instances to {args.out}")
+    return 0
+
+
 def _cmd_discover(args) -> int:
     import httpx
     from vessel_knowledge_mcp.discovery.n2k_sources import parse_devices
@@ -152,6 +168,14 @@ def main(argv: list[str] | None = None) -> int:
     p_mig.add_argument("--vault")
     p_mig.add_argument("--out", required=True)
     p_mig.set_defaults(func=_cmd_migrate_bindings)
+
+    p_build = sub.add_parser("build-registry",
+        help="build the declared equipment-registry from profile bindings + vault")
+    p_build.add_argument("--bindings", required=True,
+                         help="JSON list of {path_prefix, equipment_id, serial?}")
+    p_build.add_argument("--vault")
+    p_build.add_argument("--out", required=True)
+    p_build.set_defaults(func=_cmd_build_registry)
 
     p_zones = sub.add_parser("zones", help="emit a SignalK meta-zones delta from bindings")
     p_zones.add_argument("--vault", required=True)

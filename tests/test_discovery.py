@@ -141,6 +141,27 @@ def _seed_vault(tmp_path):
     return tmp_path / "vault"
 
 
+def test_build_registry_cli_writes_and_guards_empty(tmp_path):
+    vault = _seed_vault(tmp_path)
+    _write(tmp_path / "bindings.json",
+           [{"path_prefix": "propulsion.port", "equipment_id": "oceanvolt-hpsp25",
+             "serial": "OV-1"}])
+    out = tmp_path / "declared.json"
+    rc = cli_main(["build-registry", "--bindings", str(tmp_path / "bindings.json"),
+                   "--vault", str(vault), "--out", str(out)])
+    assert rc == 0
+    reg = json.loads(out.read_text())
+    assert reg["propulsion.port"]["serial"] == "OV-1"
+    assert reg["propulsion.port"]["source"] == "declared"
+
+    _write(tmp_path / "empty.json", [])
+    out2 = tmp_path / "empty-out.json"
+    rc2 = cli_main(["build-registry", "--bindings", str(tmp_path / "empty.json"),
+                    "--vault", str(vault), "--out", str(out2)])
+    assert rc2 == 1
+    assert not out2.exists()
+
+
 def test_discover_cli_writes_added_only(tmp_path):
     vault = _seed_vault(tmp_path)
     sources = {"n2k-1": {"22": {"n2k": {"manufacturerCode": 1857,
