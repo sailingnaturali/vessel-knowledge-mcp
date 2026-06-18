@@ -100,3 +100,5 @@ def test_propose_entries_no_match_leaves_equipment_id_null():
     reg = propose_entries(devices, pbs, _vault())
     assert reg["tanks.fuel.0"]["equipment_id"] is None
     assert reg["tanks.fuel.0"]["category"] is None
+    assert reg["tanks.fuel.0"]["instance"] == "0"
+    assert reg["tanks.fuel.0"]["paths"][0]["measurement"] == "currentLevel"

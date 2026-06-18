@@ -118,3 +118,5 @@ def test_instance_of_path_families():
         "electrical.batteries.house", "house")
     # tanks are <type>.<instance>; instance is the 3rd segment, not the fluid type
     assert _instance_of("tanks.fuel.0.currentLevel") == ("tanks.fuel.0", "0")
+    assert _instance_of("electrical.inverters.main.acPower") == (
+        "electrical.inverters.main", "main")

@@ -47,14 +47,19 @@ def match_equipment_id(vault, manufacturer: str | None, model: str | None) -> st
     return matches[0]["equipment_id"] if matches else None
 
 
-def propose_entries(devices, paths_by_source: dict, vault) -> dict:
+def propose_entries(devices, source_paths: dict, vault) -> dict:
     """Build proposed registry entries (source='discovered') from discovered
-    devices + their self-tree paths, grouped by instance."""
+    devices + their self-tree paths (a `paths_by_source` map), grouped by instance.
+
+    If two devices feed the same instance, the first device's identity wins and
+    both devices' paths accumulate under it — a rare case a human reviewer of the
+    proposal would catch.
+    """
     registry: dict[str, dict] = {}
     for dev in devices:
         eq_id = match_equipment_id(vault, dev.manufacturer, dev.model)
         card = vault.get(eq_id) if eq_id else None
-        for path in paths_by_source.get(dev.source_ref, []):
+        for path in source_paths.get(dev.source_ref, []):
             instance_id, instance = _instance_of(path)
             entry = registry.get(instance_id)
             if entry is None:

@@ -52,8 +52,11 @@ def load_registry(path: Path | None = None) -> dict:
 
 
 # Path families whose instance is the 3rd segment (group.subtype.instance.*),
-# not the 2nd. Both batteries and tanks are keyed <type>.<instance> in SignalK.
-_THREE_SEGMENT_PREFIXES = ("electrical.batteries.", "tanks.")
+# not the 2nd. These SignalK families are keyed <subtype>.<instance>.
+_THREE_SEGMENT_PREFIXES = (
+    "electrical.batteries.", "electrical.inverters.", "electrical.chargers.",
+    "electrical.solar.", "electrical.alternators.", "tanks.",
+)
 
 
 def _instance_of(path: str) -> tuple[str, str]:
@@ -64,6 +67,8 @@ def _instance_of(path: str) -> tuple[str, str]:
     tanks.fuel.0.currentLevel          -> ('tanks.fuel.0', '0')
     """
     parts = path.split(".")
+    if len(parts) < 2:
+        return path, path
     if path.startswith(_THREE_SEGMENT_PREFIXES) and len(parts) >= 3:
         return ".".join(parts[:3]), parts[2]
     return f"{parts[0]}.{parts[1]}", parts[1]
