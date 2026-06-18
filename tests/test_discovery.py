@@ -235,3 +235,13 @@ def test_reconcile_idempotent():
     once, _ = reconcile(_declared(serial=None), _discovered())
     twice, _ = reconcile(once, _discovered())
     assert twice == once
+
+
+def test_reconcile_declared_not_seen_warns():
+    declared = {**_declared(),
+                "electrical.batteries.house": {"equipment_id": "victron-cerbo-gx",
+                                               "instance": "house", "source": "declared",
+                                               "paths": []}}
+    merged, warnings = reconcile(declared, _discovered())  # discovered only has propulsion.port
+    assert "electrical.batteries.house" in merged
+    assert any("not seen" in w and "electrical.batteries.house" in w for w in warnings)

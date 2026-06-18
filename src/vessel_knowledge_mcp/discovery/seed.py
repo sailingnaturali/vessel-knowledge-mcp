@@ -104,7 +104,7 @@ def reconcile(declared: dict, discovered: dict) -> tuple[dict, list[str]]:
         if not d.get("serial") and x.get("serial"):
             m["serial"] = x["serial"]
         if x.get("n2k"):
-            m["n2k"] = x["n2k"]
+            m["n2k"] = dict(x["n2k"])
         seen = {p["path"] for p in d.get("paths", [])}
         m["paths"] = list(d.get("paths", [])) + [
             p for p in x.get("paths", []) if p["path"] not in seen]
