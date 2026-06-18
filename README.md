@@ -60,6 +60,8 @@ The registry is read from SignalK's `resources/equipment` by default; set
 | `find_equipment` | Resolve a free-text query to equipment — matches any query word against id/manufacturer/model/category/aliases (so `propulsion motor` resolves, not just exact makes) |
 | `list_equipment` | List every equipment card in the vault (id, manufacturer, model, category) |
 | `check_reading` | Deterministic in/out-of-range verdict for a value against an equipment's rated zones |
+| `list_installed` | List equipment actually installed on the vessel (per-instance identity) from the SignalK registry |
+| `get_installed` | One installed instance (`propulsion.port` or `port`) joined with its full equipment card |
 
 ## Build-time CLI
 
@@ -78,6 +80,14 @@ The registry is read from SignalK's `resources/equipment` by default; set
     uv run vessel-knowledge migrate-bindings bindings.json \
       --vault /path/to/vault \
       --out equipment-registry.json
+
+    # Propose registry entries from live SignalK N2K discovery (or fixtures)
+    uv run vessel-knowledge discover \
+      --signalk http://naturalaspi.local:3000 \
+      --vault /path/to/vault \
+      --registry /path/to/equipment-registry.json   # add --write to additively merge
+
+Discovery proposes `source: "discovered"` entries and additively writes only NEW instances; existing (declared) instances are reported as conflicts and never overwritten.
 
 ## Vault structure
 
