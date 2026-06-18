@@ -1,5 +1,5 @@
 """Pure discovery pipeline: group self-tree paths by source, match devices to
-vault cards, propose registry entries, and diff against the current registry."""
+vault cards, propose registry entries, and reconcile against the declared registry."""
 from __future__ import annotations
 
 from vessel_knowledge_mcp.registry import _instance_of
