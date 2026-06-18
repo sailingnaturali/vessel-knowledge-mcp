@@ -66,3 +66,13 @@ def test_get_installed_linked_but_missing_card():
     out = tools.get_installed(_vault(), _registry(), "tanks.fuel.0")
     assert out["found"] is True
     assert out["card"] is None
+
+
+def test_get_installed_null_equipment_id():
+    reg = {"sensor.0": {"equipment_id": None, "instance": "0", "manufacturer": None,
+                        "model": None, "serial": None, "category": None,
+                        "source": "discovered", "paths": []}}
+    assert tools.list_installed(_vault(), reg)["installed"][0]["has_card"] is False
+    out = tools.get_installed(_vault(), reg, "sensor.0")
+    assert out["found"] is True
+    assert out["card"] is None

@@ -161,5 +161,7 @@ def get_installed(vault: Vault, registry: dict, instance: str) -> dict:
         instance_id, entry = hits[0]
     eq_id = entry.get("equipment_id")
     card = vault.get(eq_id) if eq_id else None
-    return {"found": True, "instance_id": instance_id, "installed": entry,
+    # Shallow-copy the entry: the registry is loaded once and shared across calls,
+    # so never hand a caller a live reference into it.
+    return {"found": True, "instance_id": instance_id, "installed": dict(entry),
             "card": _card_dict(card) if card else None}
