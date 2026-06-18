@@ -1,0 +1,122 @@
+import json
+import os
+import socket
+import subprocess
+import time
+from pathlib import Path
+
+import httpx
+import pytest
+
+REPO = Path(__file__).resolve().parents[1]
+SIGNALK = REPO.parent / "signalk-server"
+HARNESS = REPO / "tests" / "harness"
+
+
+def _free_port() -> int:
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
+def _has_n2k_identity(sources: dict) -> bool:
+    """True once any source carries an n2k identity block with a model/maker.
+
+    Real canboatjs/n2k-signalk decodes `manufacturerCode` to a string name and
+    surfaces `modelId` from the Product Information PGN — accept either marker."""
+    for label in sources.values():
+        if not isinstance(label, dict):
+            continue
+        for sub in label.values():
+            if not isinstance(sub, dict):
+                continue
+            n2k = sub.get("n2k")
+            if isinstance(n2k, dict) and (
+                n2k.get("manufacturerCode") is not None or n2k.get("modelId")
+            ):
+                return True
+    return False
+
+
+@pytest.mark.integration
+def test_discover_against_virtual_device(tmp_path):
+    if not (SIGNALK / "bin" / "signalk-server").exists():
+        pytest.skip("signalk-server repo not present alongside this repo")
+
+    port = _free_port()
+    emitter = HARNESS / "virtual_n2k_device.js"
+    node_modules = SIGNALK / "node_modules"
+    settings = {
+        "interfaces": {},
+        "pipedProviders": [{
+            "id": "virtual-n2k", "enabled": True,
+            # The canonical Actisense pipeline: execute emits a raw byte
+            # stream, so a `liner` is required to split it into newline-
+            # delimited Actisense sentences before canboatjs — without it
+            # canboatjs takes its parseBuffer path and misreads the ASCII
+            # timestamp as a binary frame (no device ever appears).
+            "pipeElements": [
+                {"type": "providers/execute",
+                 "options": {"command": f"env NODE_PATH={node_modules} "
+                                        f"node {emitter}"}},
+                {"type": "providers/liner", "options": {}},
+                {"type": "providers/canboatjs", "options": {}},
+                {"type": "providers/n2k-signalk", "options": {}},
+            ],
+        }],
+    }
+    # A writable temp config dir so we never touch the real ~/.signalk.
+    cfg_dir = tmp_path / "signalk-config"
+    cfg_dir.mkdir()
+    (cfg_dir / "settings.json").write_text(json.dumps(settings))
+
+    env = {**os.environ,
+           "SIGNALK_NODE_CONFIG_DIR": str(cfg_dir),
+           "PORT": str(port),
+           "NODE_PATH": str(node_modules)}
+
+    proc = subprocess.Popen(
+        ["node", str(SIGNALK / "bin" / "signalk-server"),
+         "-s", "settings.json"],
+        cwd=str(SIGNALK), env=env,
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    try:
+        base = f"http://localhost:{port}"
+        device_seen = False
+        for _ in range(60):
+            if proc.poll() is not None:
+                raise AssertionError(
+                    "signalk-server exited:\n" + (proc.stdout.read() or ""))
+            try:
+                src = httpx.get(
+                    f"{base}/signalk/v1/api/sources", timeout=2).json()
+                if _has_n2k_identity(src):
+                    device_seen = True
+                    break
+            except Exception:
+                pass
+            time.sleep(1)
+        assert device_seen, "virtual device never appeared in the sources tree"
+
+        out = subprocess.run(
+            ["uv", "run", "vessel-knowledge", "discover", "--signalk", base,
+             "--vault", str(REPO.parent / "vessel-knowledge-vault")],
+            cwd=str(REPO), capture_output=True, text=True)
+        assert out.returncode == 0, out.stderr
+        # Engine instance 0 in PGN 127489 is the discrete enum "Single Engine
+        # or Dual Engine Port", which n2k-signalk maps to the `port` instance
+        # label — so a real instance-0 Oceanvolt drive surfaces as
+        # `propulsion.port`, not `propulsion.0`. The proof we want is that a
+        # real N2K device, decoded by the real server, is matched to the
+        # correct vault card and grouped under its (single) propulsion instance.
+        assert "propulsion.port" in out.stdout, out.stdout
+        assert "oceanvolt-hpsp25" in out.stdout, out.stdout
+        # The notification fan-out from the same device must NOT become a
+        # bogus equipment instance (regression: notifications are skipped).
+        assert "notifications" not in out.stdout, out.stdout
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            proc.kill()

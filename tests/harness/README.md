@@ -6,8 +6,10 @@ discover` end-to-end (sources-tree field names, $source format, the whole pipeli
 ## What runs
 - `virtual_n2k_device.js` — emits Actisense frames (60928 + 126996 + 127489) on stdout.
 - A throwaway local `signalk-server` (from the sibling `signalk-server` repo) configured
-  with a pipedProvider: `providers/execute` (runs the emitter) -> `providers/canboatjs`
-  -> `providers/n2k-signalk`, `allow_readonly` on, on an ephemeral port.
+  with a pipedProvider: `providers/execute` (runs the emitter) -> `providers/liner`
+  -> `providers/canboatjs` -> `providers/n2k-signalk`, on an ephemeral port. The `liner`
+  is required: execute emits a raw byte stream, and without splitting it into newline-
+  delimited Actisense sentences canboatjs misreads the ASCII timestamp as a binary frame.
 - `vessel-knowledge discover --signalk http://localhost:<port>` then asserts the proposal.
 
 ## Run

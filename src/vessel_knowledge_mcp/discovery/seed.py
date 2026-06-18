@@ -8,8 +8,13 @@ from vessel_knowledge_mcp.tools import find_equipment
 # Self-tree leaf keys that are value/metadata, not child paths.
 _LEAF_KEYS = {"value", "$source", "timestamp", "values", "meta", "pgn", "sentence"}
 # Top-level self keys that aren't data paths. `$source` is included defensively —
-# some server versions surface it at the vessel root.
-_SELF_SKIP = {"uuid", "name", "mmsi", "type", "url", "version", "$source", "communication"}
+# some server versions surface it at the vessel root. `notifications` is skipped
+# because n2k-signalk fans a single engine PGN (e.g. 127489) out into dozens of
+# `notifications.propulsion.<engine>.*` alert leaves that carry the device's
+# `$source`; treating those as equipment data paths proposes a bogus
+# `notifications.propulsion` instance (seen end-to-end via the virtual-device harness).
+_SELF_SKIP = {"uuid", "name", "mmsi", "type", "url", "version", "$source",
+              "communication", "notifications"}
 
 
 def paths_by_source(self_tree: dict) -> dict[str, list[str]]:
