@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 from vessel_knowledge_mcp.discovery.n2k_sources import parse_devices, DiscoveredDevice
 
 
@@ -112,3 +115,32 @@ def test_diff_registry_partitions_added_and_conflicts():
     d = diff_registry(current, proposed)
     assert d["added"] == ["electrical.batteries.house"]
     assert d["conflicts"] == ["propulsion.port"]
+
+
+from vessel_knowledge_mcp.ingest.cli import main as cli_main
+
+
+def _write(p, obj):
+    Path(p).write_text(json.dumps(obj), encoding="utf-8")
+
+
+def test_discover_cli_writes_added_only(tmp_path):
+    sources = {"n2k-1": {"22": {"n2k": {"manufacturerCode": 1857,
+                                        "modelId": "ServoProp 25",
+                                        "modelSerialCode": "OV-1"}}}}
+    self_tree = {"propulsion": {"0": {"temperature":
+                 {"value": 320.0, "$source": "n2k-1.22"}}}}
+    _write(tmp_path / "sources.json", sources)
+    _write(tmp_path / "self.json", self_tree)
+    _write(tmp_path / "registry.json", {"electrical.batteries.house": {"source": "declared"}})
+    rc = cli_main(["discover",
+                   "--sources", str(tmp_path / "sources.json"),
+                   "--self", str(tmp_path / "self.json"),
+                   "--vault", "../vessel-knowledge-vault",
+                   "--registry", str(tmp_path / "registry.json"),
+                   "--write"])
+    assert rc == 0
+    merged = json.loads((tmp_path / "registry.json").read_text())
+    assert "electrical.batteries.house" in merged       # declared untouched
+    assert merged["propulsion.0"]["source"] == "discovered"
+    assert merged["propulsion.0"]["equipment_id"] == "oceanvolt-hpsp25"

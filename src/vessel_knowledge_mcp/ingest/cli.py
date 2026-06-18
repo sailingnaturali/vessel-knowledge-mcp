@@ -47,6 +47,48 @@ def _cmd_migrate_bindings(args) -> int:
     return 0
 
 
+def _cmd_discover(args) -> int:
+    import httpx
+    from vessel_knowledge_mcp.discovery.n2k_sources import parse_devices
+    from vessel_knowledge_mcp.discovery.seed import (
+        diff_registry, paths_by_source, propose_entries)
+
+    if args.signalk:
+        base = args.signalk.rstrip("/")
+        sources = httpx.get(f"{base}/signalk/v1/api/sources", timeout=5.0).json()
+        self_tree = httpx.get(f"{base}/signalk/v1/api/vessels/self", timeout=5.0).json()
+    else:
+        if not (args.sources and args.self_tree):
+            print("need --signalk URL, or both --sources and --self", file=sys.stderr)
+            return 2
+        sources = json.loads(Path(args.sources).read_text(encoding="utf-8"))
+        self_tree = json.loads(Path(args.self_tree).read_text(encoding="utf-8"))
+
+    vault = Vault.load(Path(args.vault)) if args.vault else Vault.load()
+    proposed = propose_entries(parse_devices(sources), paths_by_source(self_tree), vault)
+
+    current = {}
+    if args.registry and Path(args.registry).is_file():
+        current = json.loads(Path(args.registry).read_text(encoding="utf-8"))
+    d = diff_registry(current, proposed)
+
+    for iid in d["added"]:
+        print(f"+ {iid}  {proposed[iid].get('manufacturer')} {proposed[iid].get('model')} "
+              f"-> {proposed[iid].get('equipment_id')}")
+    for iid in d["conflicts"]:
+        print(f"! {iid}  already in registry (declared wins; not overwritten)",
+              file=sys.stderr)
+
+    if args.write:
+        if not args.registry:
+            print("--write requires --registry", file=sys.stderr)
+            return 2
+        merged = {**current, **{k: proposed[k] for k in d["added"]}}
+        Path(args.registry).write_text(json.dumps(merged, indent=2) + "\n", encoding="utf-8")
+        print(f"wrote {len(d['added'])} new instances to {args.registry}")
+    return 0
+
+
 def _cmd_ingest(args) -> int:
     # Deterministic pipeline (issue #7): pdftotext -> regex mining -> review
     # file. No model in the data path; never mints new equipment IDs.
@@ -74,6 +116,17 @@ def _cmd_ingest(args) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="vessel-knowledge")
     sub = parser.add_subparsers(dest="cmd", required=True)
+
+    p_disc = sub.add_parser("discover",
+        help="propose equipment-registry entries from SignalK N2K discovery")
+    p_disc.add_argument("--signalk", help="SignalK base URL (else use --sources/--self)")
+    p_disc.add_argument("--sources", help="sources.json fixture (offline)")
+    p_disc.add_argument("--self", dest="self_tree", help="vessels/self JSON fixture (offline)")
+    p_disc.add_argument("--vault")
+    p_disc.add_argument("--registry", help="current registry to diff/merge against")
+    p_disc.add_argument("--write", action="store_true",
+                        help="additively merge added instances into --registry")
+    p_disc.set_defaults(func=_cmd_discover)
 
     p_ingest = sub.add_parser(
         "ingest",
