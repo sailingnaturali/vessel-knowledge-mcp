@@ -162,27 +162,34 @@ def test_build_registry_cli_writes_and_guards_empty(tmp_path):
     assert not out2.exists()
 
 
-def test_discover_cli_writes_added_only(tmp_path):
+def test_discover_cli_reconciles_into_served(tmp_path):
     vault = _seed_vault(tmp_path)
-    sources = {"n2k-1": {"22": {"n2k": {"manufacturerCode": 1857,
+    sources = {"n2k-1": {"22": {"n2k": {"manufacturerCode": 847,
                                         "modelId": "ServoProp 25",
-                                        "modelSerialCode": "OV-1"}}}}
-    self_tree = {"propulsion": {"0": {"temperature":
+                                        "modelSerialCode": "BUS-9"}}}}
+    self_tree = {"propulsion": {"port": {"temperature":
                  {"value": 320.0, "$source": "n2k-1.22"}}}}
+    declared = {"propulsion.port": {
+        "equipment_id": "oceanvolt-hpsp25", "manufacturer": "Oceanvolt",
+        "model": "HighPower ServoProp 25", "serial": None, "instance": "port",
+        "category": "propulsion", "source": "declared",
+        "paths": [{"path": "propulsion.port.temperature", "measurement": "temperature"}]}}
     _write(tmp_path / "sources.json", sources)
     _write(tmp_path / "self.json", self_tree)
-    _write(tmp_path / "registry.json", {"electrical.batteries.house": {"source": "declared"}})
+    _write(tmp_path / "declared.json", declared)
+    out = tmp_path / "served.json"
     rc = cli_main(["discover",
                    "--sources", str(tmp_path / "sources.json"),
                    "--self", str(tmp_path / "self.json"),
                    "--vault", str(vault),
-                   "--registry", str(tmp_path / "registry.json"),
-                   "--write"])
+                   "--declared", str(tmp_path / "declared.json"),
+                   "--out", str(out)])
     assert rc == 0
-    merged = json.loads((tmp_path / "registry.json").read_text())
-    assert "electrical.batteries.house" in merged       # declared untouched
-    assert merged["propulsion.0"]["source"] == "discovered"
-    assert merged["propulsion.0"]["equipment_id"] == "oceanvolt-hpsp25"
+    served = json.loads(out.read_text())
+    e = served["propulsion.port"]
+    assert e["serial"] == "BUS-9"
+    assert e["equipment_id"] == "oceanvolt-hpsp25"
+    assert e["source"] == "declared"
 
 
 def _declared(serial=None):
