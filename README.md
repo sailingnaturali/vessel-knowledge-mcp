@@ -38,7 +38,7 @@ not bar, not knots.** `display_units` is metadata only, for human readability.
 ## Run the server
 
     VESSEL_KNOWLEDGE_VAULT_PATH=/path/to/vault \
-    SIGNALK_URL=http://naturalaspi.local:3000 \
+    SIGNALK_URL=http://naturalaspi:3000 \
     uv run vessel-knowledge-mcp
 
 The registry is read from SignalK's `resources/equipment` by default; set
@@ -90,7 +90,7 @@ The registry is read from SignalK's `resources/equipment` by default; set
 
     # Reconcile declared + live N2K discovery into the served registry
     uv run vessel-knowledge discover \
-      --signalk http://naturalaspi.local:3000 \
+      --signalk http://naturalaspi:3000 \
       --vault /path/to/vault \
       --declared equipment-registry.declared.json \
       --out equipment-registry.json
